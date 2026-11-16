@@ -49,7 +49,7 @@
 - Modify: `backend/app/services/ocr/prompts.py`
 - Test: `backend/tests/test_ocr_prompts.py`
 
-- [ ] **Step 1: Write tests for separate OCR and Parser prompts**
+- [x] **Step 1: Write tests for separate OCR and Parser prompts**
   - Test that every OCR document type has an `OCR_TRANSCRIPTION_PROMPT`.
   - Test that every OCR document type has a `PARSER_PROMPT`.
   - Test that `NATIONAL_ID_FRONT` parser prompt contains explicit instructions for:
@@ -57,7 +57,7 @@
     - Handling repeated father/son names (e.g. "محمد محمد") without deduplication.
     - 14-digit National ID extraction.
 
-- [ ] **Step 2: Update `backend/app/services/ocr/prompts.py`**
+- [x] **Step 2: Update `backend/app/services/ocr/prompts.py`**
   - Define `OCR_PROMPTS`: Instructs vision model to transcribe text verbatim preserving line breaks and layout.
   - Define `PARSER_PROMPTS`: Instructs text LLM to extract target schema as JSON, embedding Egyptian ID domain knowledge:
     ```text
@@ -68,7 +68,7 @@
     ```
   - Provide `get_ocr_prompt(doc_type)` and `get_parser_prompt(doc_type)`.
 
-- [ ] **Step 3: Run tests and verify**
+- [x] **Step 3: Run tests and verify**
   - Run `pytest tests/test_ocr_prompts.py`.
 
 ---
