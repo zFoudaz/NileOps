@@ -86,6 +86,10 @@ export const STATUS_VARIANTS: Record<
   rejected: 'destructive',
 };
 
+export const REQUEST_TYPE_LABELS: Record<string, string> = {
+  account_opening: 'فتح حساب بنكي',
+};
+
 export const AUTO_DECISION_LABELS: Record<AutoDecision, string> = {
   auto_approved: 'مقبول مبدئياً بالفحص الآلي',
   auto_rejected: 'مرفوض مبدئياً بالفحص الآلي',

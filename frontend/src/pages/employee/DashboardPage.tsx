@@ -41,6 +41,7 @@ import { useToast } from '@/hooks/useToast';
 import type { BankRequest, RequestStatus } from '@/types';
 import {
   ACCOUNT_TYPES_INFO,
+  REQUEST_TYPE_LABELS,
   STATUS_LABELS,
   STATUS_VARIANTS,
 } from '@/lib/constants';
@@ -59,6 +60,8 @@ export const EmployeeDashboardPage: React.FC = () => {
   const [statusFilter, setStatusFilter] = useState<string>('all');
   const [subTypeFilter, setSubTypeFilter] = useState<string>('all');
   const [searchQuery, setSearchQuery] = useState<string>('');
+  const [startDate, setStartDate] = useState<string>('');
+  const [endDate, setEndDate] = useState<string>('');
   const [currentPage, setCurrentPage] = useState<number>(1);
 
   // Fetch all requests for metrics & local filtering/pagination
@@ -79,27 +82,15 @@ export const EmployeeDashboardPage: React.FC = () => {
   useEffect(() => {
     let ignore = false;
     const run = async () => {
-      try {
-        const data = await getEmployeeRequests({ status: 'all', limit: 100 });
-        if (!ignore) {
-          setAllRequests(data || []);
-        }
-      } catch (err: unknown) {
-        if (!ignore) {
-          const msg = err instanceof Error ? err.message : 'فشل في تحميل الطلبات';
-          toast({
-            variant: 'destructive',
-            title: 'خطأ في جلب البيانات',
-            description: msg,
-          });
-        }
+      if (!ignore) {
+        await fetchRequests();
       }
     };
     void run();
     return () => {
       ignore = true;
     };
-  }, [getEmployeeRequests, toast]);
+  }, [fetchRequests]);
 
   // Compute Metrics from all retrieved requests
   const metrics = useMemo(() => {
@@ -138,6 +129,19 @@ export const EmployeeDashboardPage: React.FC = () => {
         return false;
       }
 
+      // Date range filter
+      if (startDate) {
+        const reqDate = new Date(req.created_at);
+        const start = new Date(startDate);
+        if (reqDate < start) return false;
+      }
+
+      if (endDate) {
+        const reqDate = new Date(req.created_at);
+        const end = new Date(endDate + 'T23:59:59');
+        if (reqDate > end) return false;
+      }
+
       // Search query (matches name, email, short ID or full ID)
       if (searchQuery.trim()) {
         const query = searchQuery.trim().toLowerCase();
@@ -157,7 +161,7 @@ export const EmployeeDashboardPage: React.FC = () => {
 
       return true;
     });
-  }, [allRequests, statusFilter, subTypeFilter, searchQuery]);
+  }, [allRequests, statusFilter, subTypeFilter, startDate, endDate, searchQuery]);
 
   const handleStatusFilterChange = (val: string) => {
     setStatusFilter(val);
@@ -174,6 +178,16 @@ export const EmployeeDashboardPage: React.FC = () => {
     setCurrentPage(1);
   };
 
+  const handleStartDateChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    setStartDate(e.target.value);
+    setCurrentPage(1);
+  };
+
+  const handleEndDateChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    setEndDate(e.target.value);
+    setCurrentPage(1);
+  };
+
   const handleCardClick = (status: string) => {
     setStatusFilter((prev) => (prev === status ? 'all' : status));
     setCurrentPage(1);
@@ -183,6 +197,8 @@ export const EmployeeDashboardPage: React.FC = () => {
     setStatusFilter('all');
     setSubTypeFilter('all');
     setSearchQuery('');
+    setStartDate('');
+    setEndDate('');
     setCurrentPage(1);
   };
 
@@ -209,7 +225,11 @@ export const EmployeeDashboardPage: React.FC = () => {
   }, [filteredRequests, currentPage]);
 
   const hasActiveFilters =
-    statusFilter !== 'all' || subTypeFilter !== 'all' || searchQuery.trim() !== '';
+    statusFilter !== 'all' ||
+    subTypeFilter !== 'all' ||
+    searchQuery.trim() !== '' ||
+    startDate !== '' ||
+    endDate !== '';
 
   return (
     <div className="space-y-6" dir="rtl">
@@ -342,20 +362,28 @@ export const EmployeeDashboardPage: React.FC = () => {
       {/* Filter and Search Bar */}
       <Card className="border-slate-200 bg-white shadow-xs">
         <CardContent className="p-4 space-y-3">
-          <div className="grid grid-cols-1 md:grid-cols-12 gap-3 items-center">
+          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-12 gap-3 items-end">
             {/* Search Input */}
-            <div className="md:col-span-5 relative">
-              <Search className="absolute right-3 top-2.5 h-4 w-4 text-slate-400 pointer-events-none" />
-              <Input
-                placeholder="بحث باسم العميل، البريد الإلكتروني، أو رقم الطلب..."
-                value={searchQuery}
-                onChange={handleSearchChange}
-                className="pr-9 text-sm"
-              />
+            <div className="lg:col-span-4 relative">
+              <label className="text-[11px] font-semibold text-slate-600 block mb-1">
+                بحث بالاسم أو المعرف
+              </label>
+              <div className="relative">
+                <Search className="absolute right-3 top-2.5 h-4 w-4 text-slate-400 pointer-events-none" />
+                <Input
+                  placeholder="بحث باسم العميل، البريد، أو رقم الطلب..."
+                  value={searchQuery}
+                  onChange={handleSearchChange}
+                  className="pr-9 text-sm"
+                />
+              </div>
             </div>
 
             {/* Status Select */}
-            <div className="md:col-span-3">
+            <div className="lg:col-span-2">
+              <label className="text-[11px] font-semibold text-slate-600 block mb-1">
+                حالة الطلب
+              </label>
               <Select value={statusFilter} onValueChange={handleStatusFilterChange}>
                 <SelectTrigger>
                   <SelectValue placeholder="حالة الطلب" />
@@ -371,13 +399,16 @@ export const EmployeeDashboardPage: React.FC = () => {
             </div>
 
             {/* Account Sub-type Select */}
-            <div className="md:col-span-3">
+            <div className="lg:col-span-2">
+              <label className="text-[11px] font-semibold text-slate-600 block mb-1">
+                نوع الحساب
+              </label>
               <Select value={subTypeFilter} onValueChange={handleSubTypeFilterChange}>
                 <SelectTrigger>
                   <SelectValue placeholder="نوع الحساب" />
                 </SelectTrigger>
                 <SelectContent>
-                  <SelectItem value="all">الكل (جميع أنواع الحسابات)</SelectItem>
+                  <SelectItem value="all">الكل (جميع الأنواع)</SelectItem>
                   <SelectItem value="individual">حساب أفراد (21+ سنة)</SelectItem>
                   <SelectItem value="youth">حساب شباب (15-21 سنة)</SelectItem>
                   <SelectItem value="minor">حساب قصّر (تحت 15 سنة)</SelectItem>
@@ -385,20 +416,44 @@ export const EmployeeDashboardPage: React.FC = () => {
               </Select>
             </div>
 
-            {/* Reset Filter Button */}
-            <div className="md:col-span-1 flex justify-end">
-              {hasActiveFilters && (
-                <Button
-                  variant="ghost"
-                  size="sm"
-                  onClick={handleClearFilters}
-                  title="مسح الفلاتر"
-                  className="h-10 px-2.5 text-xs text-rose-600 hover:text-rose-700 hover:bg-rose-50"
-                >
-                  <FilterX className="h-4 w-4 ml-1" />
-                  <span>مسح</span>
-                </Button>
-              )}
+            {/* Start Date */}
+            <div className="lg:col-span-2">
+              <label className="text-[11px] font-semibold text-slate-600 block mb-1">
+                من تاريخ
+              </label>
+              <Input
+                type="date"
+                value={startDate}
+                onChange={handleStartDateChange}
+                className="text-xs h-10"
+                aria-label="من تاريخ"
+              />
+            </div>
+
+            {/* End Date */}
+            <div className="lg:col-span-2">
+              <div className="flex items-center justify-between mb-1">
+                <label className="text-[11px] font-semibold text-slate-600 block">
+                  إلى تاريخ
+                </label>
+                {hasActiveFilters && (
+                  <button
+                    type="button"
+                    onClick={handleClearFilters}
+                    className="text-[10px] text-rose-600 hover:text-rose-700 hover:underline flex items-center gap-0.5"
+                  >
+                    <FilterX className="h-3 w-3" />
+                    <span>مسح</span>
+                  </button>
+                )}
+              </div>
+              <Input
+                type="date"
+                value={endDate}
+                onChange={handleEndDateChange}
+                className="text-xs h-10"
+                aria-label="إلى تاريخ"
+              />
             </div>
           </div>
         </CardContent>
@@ -412,6 +467,7 @@ export const EmployeeDashboardPage: React.FC = () => {
               <TableHead className="w-[120px]">معرف الطلب</TableHead>
               <TableHead>اسم العميل</TableHead>
               <TableHead>البريد الإلكتروني</TableHead>
+              <TableHead className="w-[120px]">نوع الطلب</TableHead>
               <TableHead className="w-[110px]">نوع الحساب</TableHead>
               <TableHead className="w-[150px]">القرار الآلي</TableHead>
               <TableHead className="w-[130px]">حالة الطلب</TableHead>
@@ -423,14 +479,14 @@ export const EmployeeDashboardPage: React.FC = () => {
           <TableBody>
             {isLoading && paginatedRequests.length === 0 ? (
               <TableRow>
-                <TableCell colSpan={9} className="text-center py-12 text-slate-500">
+                <TableCell colSpan={10} className="text-center py-12 text-slate-500">
                   <RotateCw className="h-6 w-6 animate-spin mx-auto text-emerald-600 mb-2" />
                   <p className="text-sm">جاري تحميل بيانات الطلبات...</p>
                 </TableCell>
               </TableRow>
             ) : paginatedRequests.length === 0 ? (
               <TableRow>
-                <TableCell colSpan={9} className="text-center py-12">
+                <TableCell colSpan={10} className="text-center py-12">
                   <div className="flex flex-col items-center justify-center text-slate-400">
                     <Inbox className="h-12 w-12 stroke-1 text-slate-300 mb-3" />
                     <p className="text-base font-semibold text-slate-700">لا توجد طلبات تطابق معايير البحث</p>
@@ -508,6 +564,13 @@ export const EmployeeDashboardPage: React.FC = () => {
                     {/* Customer Email */}
                     <TableCell className="text-slate-500 text-xs dir-ltr text-right">
                       {customerEmail}
+                    </TableCell>
+
+                    {/* Request Type */}
+                    <TableCell>
+                      <Badge variant="outline" className="text-xs bg-emerald-50/60 text-emerald-800 border-emerald-200">
+                        {REQUEST_TYPE_LABELS[req.request_type] || 'فتح حساب بنكي'}
+                      </Badge>
                     </TableCell>
 
                     {/* Account Type */}

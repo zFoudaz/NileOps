@@ -133,6 +133,7 @@ export const EmployeeRequestDetailPage: React.FC = () => {
         description: 'تم تحديث حالة الطلب إلى معتمد وتوثيق اسم المراجع وتاريخ التدقيق.',
       });
       await fetchDetail();
+      setTimeout(() => navigate('/employee'), 1200);
     } catch (err: unknown) {
       const customErr = err as Error & { status?: number };
       if (customErr.status === 409 || customErr.message.includes('already been verified')) {
@@ -180,6 +181,7 @@ export const EmployeeRequestDetailPage: React.FC = () => {
         description: 'تم تسجيل الرفض وحفظ الأسباب المصرفية بنجاح.',
       });
       await fetchDetail();
+      setTimeout(() => navigate('/employee'), 1200);
     } catch (err: unknown) {
       const customErr = err as Error & { status?: number };
       if (customErr.status === 409 || customErr.message.includes('already been verified')) {
