@@ -6,7 +6,7 @@ import { AppLayout } from '@/components/layout/AppLayout';
 import { ProtectedRoute } from '@/components/layout/ProtectedRoute';
 import { LoginPage } from '@/pages/auth/LoginPage';
 import { RegisterPage } from '@/pages/auth/RegisterPage';
-import { CustomerDashboard } from '@/pages/customer/CustomerDashboard';
+import { DashboardPage } from '@/pages/customer/DashboardPage';
 import { NewRequestPage } from '@/pages/customer/NewRequestPage';
 import { UploadDocumentsPage } from '@/pages/customer/UploadDocumentsPage';
 import { ReviewDataPage } from '@/pages/customer/ReviewDataPage';
@@ -91,7 +91,7 @@ export const App: React.FC = () => {
                 path="/dashboard"
                 element={
                   <ProtectedRoute requiredRole="customer">
-                    <CustomerDashboard />
+                    <DashboardPage />
                   </ProtectedRoute>
                 }
               />
