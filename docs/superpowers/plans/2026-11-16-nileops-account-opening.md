@@ -188,42 +188,13 @@ git commit -m "feat: backend scaffolding with database models and migrations"
 - Consumes: `User` model, `get_db()`, `Settings`
 - Produces: `get_current_user(token) -> User`, `require_role(role) -> Dependency`, `create_access_token(data) -> str`, schemas `UserRegister`, `UserLogin`, `UserResponse`, `Token`
 
-- [ ] **Step 1: Create user schemas in `backend/app/schemas/user.py`**
-
-`UserRegister(name, email, password)`, `UserLogin(email, password)`, `UserResponse(id, name, email, role)`, `Token(access_token, token_type)`
-
-- [ ] **Step 2: Create `backend/app/api/deps.py`**
-
-`get_db()` — yields DB session. `get_current_user(token: str = Depends(oauth2_scheme), db = Depends(get_db)) -> User` — decodes JWT, fetches user. `require_role(role: UserRole)` — returns a dependency that raises 403 if user.role != role.
-
-- [ ] **Step 3: Create `backend/app/api/routes/auth.py`**
-
-- `POST /api/auth/register` — creates customer (role always = customer), hashes password, returns Token
-- `POST /api/auth/login` — verifies email + password, returns Token
-- `GET /api/auth/me` — returns UserResponse (requires auth)
-
-- [ ] **Step 4: Create `backend/seed_employee.py`**
-
-CLI script: `python seed_employee.py --name "Admin" --email admin@bank.com --password secret` — creates user with role=employee.
-
-- [ ] **Step 5: Write auth tests**
-
-```python
-def test_register_customer()              # POST /register → 201, token returned, role=customer
-def test_register_duplicate_email()       # POST /register same email → 400
-def test_login_success()                  # POST /login → 200, valid token
-def test_login_wrong_password()           # POST /login wrong pw → 401
-def test_me_authenticated()               # GET /me with token → 200, correct user
-def test_me_unauthenticated()             # GET /me no token → 401
-def test_require_employee_as_customer()   # Access employee endpoint as customer → 403
-```
-
-- [ ] **Step 6: Run tests**
-
-Run: `cd backend && pytest tests/test_auth.py -v`
-Expected: 7 PASS
-
-- [ ] **Step 7: Commit**
+- [x] **Step 1: Create user schemas in `backend/app/schemas/user.py`**
+- [x] **Step 2: Create `backend/app/api/deps.py`**
+- [x] **Step 3: Create `backend/app/api/routes/auth.py`**
+- [x] **Step 4: Create `backend/seed_employee.py`**
+- [x] **Step 5: Write auth tests**
+- [x] **Step 6: Run tests**
+- [x] **Step 7: Commit**
 
 ```bash
 git add -A
