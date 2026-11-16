@@ -32,6 +32,10 @@ services:
       - ACCESS_TOKEN_EXPIRE_MINUTES=1440
       - OLLAMA_BASE_URL=${OLLAMA_BASE_URL:-http://host.docker.internal:11434}
       - OLLAMA_MODEL=${OLLAMA_MODEL:-qwen3.5:4b}
+      - OCR_PROVIDER=${OCR_PROVIDER:-ollama}
+      - OCR_MODEL=${OCR_MODEL:-qwen3.5:4b}
+      - PARSER_PROVIDER=${PARSER_PROVIDER:-ollama}
+      - PARSER_MODEL=${PARSER_MODEL:-qwen3.5:4b}
       - UPLOAD_DIR=uploads
       - DEFAULT_EMPLOYEE_NAME=${DEFAULT_EMPLOYEE_NAME:-أحمد فؤاد}
       - DEFAULT_EMPLOYEE_EMAIL=${DEFAULT_EMPLOYEE_EMAIL:-employee@nileops.com}

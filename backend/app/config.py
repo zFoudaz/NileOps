@@ -8,6 +8,10 @@ class Settings(BaseSettings):
     ACCESS_TOKEN_EXPIRE_MINUTES: int = 1440
     OLLAMA_BASE_URL: str = "http://localhost:11434"
     OLLAMA_MODEL: str = "qwen3.5:4b"
+    OCR_PROVIDER: str = "ollama"
+    OCR_MODEL: str = "qwen3.5:4b"
+    PARSER_PROVIDER: str = "ollama"
+    PARSER_MODEL: str = "qwen3.5:4b"
     UPLOAD_DIR: str = "uploads"
 
     model_config = SettingsConfigDict(
