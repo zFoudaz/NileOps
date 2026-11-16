@@ -1,5 +1,5 @@
 from datetime import date, datetime
-from typing import Any, Optional, Union
+from typing import Any, Optional
 from uuid import UUID
 
 from sqlalchemy.orm import Session
@@ -155,14 +155,21 @@ def validate_request(request_id: UUID, db: Session) -> list[ValidationResult]:
                     "error": "Could not determine date of birth from birth certificate",
                     "raw_dob": raw_dob,
                 }
+            elif dob > date.today():
+                age_passed = False
+                age_details = {
+                    "error": "Date of birth cannot be in the future",
+                    "date_of_birth": dob.isoformat(),
+                    "today": date.today().isoformat(),
+                }
             else:
                 age = _compute_age(dob)
-                age_passed = (age < 15)
+                age_passed = (0 <= age < 15)
                 age_details = {
                     "age": age,
                     "date_of_birth": dob.isoformat(),
                     "sub_type": sub_type,
-                    "criteria": "age < 15",
+                    "criteria": "0 <= age < 15",
                 }
     else:
         front_doc = docs_by_type.get(DocumentType.NATIONAL_ID_FRONT.value.lower())

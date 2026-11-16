@@ -1,14 +1,14 @@
 import uuid
-from datetime import date
-import pytest
+from unittest.mock import patch
 
 from app.models.document import Document
-from app.models.enums import AccountType, AutoDecision, DocumentType, RequestStatus, UserRole
+from app.models.enums import AutoDecision, DocumentType, RequestStatus, UserRole
 from app.models.request import Request
 from app.models.user import User
 from app.models.validation_result import ValidationResult
-from app.services.validation.cross_validator import validate_request
+from app.services.ocr.extractor import process_request_documents
 from app.services.validation.business_rules import compute_auto_decision
+from app.services.validation.cross_validator import validate_request
 
 
 def create_test_request(db_session, sub_type: str = "individual") -> Request:
@@ -161,6 +161,25 @@ def test_cross_validate_age_minor_valid(db_session):
     assert age_res.details.get("age") < 15
 
 
+def test_cross_validate_age_minor_future_dob(db_session):
+    """Future birth date on minor account -> age_check passed=False."""
+    req = create_test_request(db_session, sub_type="minor")
+    doc = Document(
+        request_id=req.id,
+        document_type=DocumentType.BIRTH_CERTIFICATE,
+        file_path="uploads/birth_cert.jpg",
+        extracted_data={"date_of_birth": "2030-01-01"},
+        ocr_completed=True,
+    )
+    db_session.add(doc)
+    db_session.commit()
+
+    results = validate_request(req.id, db_session)
+    age_res = next((r for r in results if r.rule_name == "age_check"), None)
+    assert age_res is not None
+    assert age_res.passed is False
+
+
 def test_cross_validate_guardian_id_match(db_session):
     """father_national_id matches guardian's -> guardian_id_match passed=True."""
     req = create_test_request(db_session, sub_type="minor")
@@ -239,3 +258,50 @@ def test_auto_reject_wrong_age():
     v2 = ValidationResult(request_id=req_id, rule_name="age_check", passed=False)
     decision = compute_auto_decision([v1, v2])
     assert decision == AutoDecision.AUTO_REJECTED
+
+
+def test_process_request_documents_integration(db_session, tmp_path):
+    """process_request_documents runs OCR, validation, auto-decision, and updates status."""
+    req = create_test_request(db_session, sub_type="youth")
+
+    img_front = tmp_path / "front.jpg"
+    img_front.write_bytes(b"dummy")
+    img_back = tmp_path / "back.jpg"
+    img_back.write_bytes(b"dummy")
+
+    doc1 = Document(
+        request_id=req.id,
+        document_type=DocumentType.NATIONAL_ID_FRONT,
+        file_path=str(img_front),
+        ocr_required=True,
+        ocr_completed=False,
+    )
+    doc2 = Document(
+        request_id=req.id,
+        document_type=DocumentType.NATIONAL_ID_BACK,
+        file_path=str(img_back),
+        ocr_required=True,
+        ocr_completed=False,
+    )
+    db_session.add_all([doc1, doc2])
+    db_session.commit()
+
+    mock_extractions = {
+        DocumentType.NATIONAL_ID_FRONT: {"national_id": "30905150101235"},
+        DocumentType.NATIONAL_ID_BACK: {"expiry_date": "2030-12-31"},
+    }
+
+    with patch(
+        "app.services.ocr.extractor.extract_document_fields",
+        side_effect=lambda path, dtype: mock_extractions[dtype],
+    ):
+        process_request_documents(req.id, db=db_session)
+
+    db_session.refresh(req)
+    assert req.status == RequestStatus.PENDING_REVIEW
+    assert req.auto_decision == AutoDecision.AUTO_APPROVED
+
+    # Check validation results were persisted
+    val_records = db_session.query(ValidationResult).filter_by(request_id=req.id).all()
+    assert len(val_records) == 2
+    assert all(r.passed for r in val_records)
