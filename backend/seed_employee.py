@@ -2,6 +2,7 @@ import argparse
 import sys
 from pathlib import Path
 from typing import Optional
+from sqlalchemy.exc import IntegrityError
 from sqlalchemy.orm import Session
 
 # Ensure backend root is on sys.path
@@ -29,20 +30,28 @@ def seed_employee(
         close_session = True
 
     try:
-        user = db.query(User).filter(User.email == email).first()
+        normalized_email = email.strip().lower()
+        user = db.query(User).filter(User.email == normalized_email).first()
         if user:
-            print(f"[INFO] User with email '{email}' already exists (ID: {user.id}, Role: {user.role.value}).")
+            print(f"[INFO] User with email '{normalized_email}' already exists (ID: {user.id}, Role: {user.role.value}).")
             return user
 
         user = User(
-            name=name,
-            email=email,
+            name=name.strip(),
+            email=normalized_email,
             password_hash=get_password_hash(password),
             role=UserRole.EMPLOYEE,
         )
         db.add(user)
-        db.commit()
-        db.refresh(user)
+        try:
+            db.commit()
+            db.refresh(user)
+        except IntegrityError:
+            db.rollback()
+            user = db.query(User).filter(User.email == normalized_email).first()
+            print(f"[INFO] User with email '{normalized_email}' already exists (ID: {user.id}, Role: {user.role.value}).")
+            return user
+
         print(f"[SUCCESS] Employee created: {user.name} <{user.email}> (ID: {user.id}, Role: {user.role.value})")
         return user
     finally:

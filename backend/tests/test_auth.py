@@ -44,7 +44,7 @@ def test_register_customer(client, db_session):
 
 
 def test_register_duplicate_email(client, db_session):
-    """POST /register same email -> 400."""
+    """POST /register same email -> 400 (including case-insensitive check)."""
     user_payload = {
         "name": "Sara Ahmed",
         "email": "sara@bank.com",
@@ -57,6 +57,17 @@ def test_register_duplicate_email(client, db_session):
     second_resp = client.post("/api/auth/register", json=user_payload)
     assert second_resp.status_code == 400
     assert "detail" in second_resp.json()
+
+    # Attempt to register with uppercase variant of existing email -> 400
+    upper_resp = client.post(
+        "/api/auth/register",
+        json={
+            "name": "Sara Upper",
+            "email": "SARA@BANK.COM",
+            "password": "secretpassword",
+        },
+    )
+    assert upper_resp.status_code == 400
 
 
 def test_login_success(client, db_session):
@@ -71,11 +82,11 @@ def test_login_success(client, db_session):
         },
     )
 
-    # Login with valid credentials
+    # Login with valid credentials (using uppercase email to verify normalization)
     response = client.post(
         "/api/auth/login",
         json={
-            "email": "omar@bank.com",
+            "email": "OMAR@BANK.COM",
             "password": "correctpassword",
         },
     )
@@ -207,3 +218,58 @@ def test_require_employee_as_customer(client, db_session):
     )
     assert allowed_resp.status_code == 200
     assert allowed_resp.json()["message"] == "employee access granted"
+
+
+def test_register_arabic_characters(client, db_session):
+    """POST /register and GET /me with Arabic characters in name."""
+    response = client.post(
+        "/api/auth/register",
+        json={
+            "name": "أحمد علي",
+            "email": "ahmed.arabic@bank.com",
+            "password": "strongpassword123",
+        },
+    )
+    assert response.status_code == 201
+    data = response.json()
+    assert "access_token" in data
+
+    # Verify user in database
+    user = db_session.query(User).filter(User.email == "ahmed.arabic@bank.com").first()
+    assert user is not None
+    assert user.name == "أحمد علي"
+    assert user.role == UserRole.CUSTOMER
+
+    # Verify /me returns correct Arabic name
+    me_resp = client.get(
+        "/api/auth/me",
+        headers={"Authorization": f"Bearer {data['access_token']}"},
+    )
+    assert me_resp.status_code == 200
+    assert me_resp.json()["name"] == "أحمد علي"
+
+
+def test_password_length_validation(client):
+    """Password must be between 8 and 72 characters."""
+    # Under 8 chars (7 chars) -> 422 Unprocessable Entity
+    short_resp = client.post(
+        "/api/auth/register",
+        json={
+            "name": "Short Password",
+            "email": "short@bank.com",
+            "password": "short7!",
+        },
+    )
+    assert short_resp.status_code == 422
+
+    # Over 72 chars (73 chars) -> 422 Unprocessable Entity
+    long_resp = client.post(
+        "/api/auth/register",
+        json={
+            "name": "Long Password",
+            "email": "long@bank.com",
+            "password": "a" * 73,
+        },
+    )
+    assert long_resp.status_code == 422
+

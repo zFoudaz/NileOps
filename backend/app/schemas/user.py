@@ -1,13 +1,13 @@
 import uuid
 from typing import Optional
-from pydantic import BaseModel, ConfigDict, EmailStr
+from pydantic import BaseModel, ConfigDict, EmailStr, Field
 from app.models.enums import UserRole
 
 
 class UserRegister(BaseModel):
     name: str
     email: EmailStr
-    password: str
+    password: str = Field(min_length=8, max_length=72)
 
 
 class UserLogin(BaseModel):

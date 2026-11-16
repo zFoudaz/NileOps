@@ -1,4 +1,5 @@
 from fastapi import APIRouter, Depends, HTTPException, status
+from sqlalchemy.exc import IntegrityError
 from sqlalchemy.orm import Session
 
 from app.api.deps import (
@@ -25,7 +26,8 @@ def register(
     user_in: UserRegister,
     db: Session = Depends(get_db),
 ) -> Token:
-    existing_user = db.query(User).filter(User.email == user_in.email).first()
+    normalized_email = user_in.email.strip().lower()
+    existing_user = db.query(User).filter(User.email == normalized_email).first()
     if existing_user:
         raise HTTPException(
             status_code=status.HTTP_400_BAD_REQUEST,
@@ -34,13 +36,20 @@ def register(
 
     user = User(
         name=user_in.name,
-        email=user_in.email,
+        email=normalized_email,
         password_hash=get_password_hash(user_in.password),
         role=UserRole.CUSTOMER,
     )
     db.add(user)
-    db.commit()
-    db.refresh(user)
+    try:
+        db.commit()
+        db.refresh(user)
+    except IntegrityError:
+        db.rollback()
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail="Email already registered",
+        )
 
     access_token = create_access_token(
         data={"sub": str(user.id), "email": user.email, "role": user.role.value}
@@ -58,7 +67,8 @@ def login(
     credentials: UserLogin,
     db: Session = Depends(get_db),
 ) -> Token:
-    user = db.query(User).filter(User.email == credentials.email).first()
+    normalized_email = credentials.email.strip().lower()
+    user = db.query(User).filter(User.email == normalized_email).first()
     if not user or not verify_password(credentials.password, user.password_hash):
         raise HTTPException(
             status_code=status.HTTP_401_UNAUTHORIZED,

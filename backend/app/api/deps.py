@@ -62,7 +62,7 @@ def get_current_user(
         pass
 
     if user is None:
-        user = db.query(User).filter(User.email == user_identifier).first()
+        user = db.query(User).filter(User.email == user_identifier.strip().lower()).first()
 
     if user is None:
         raise credentials_exception
