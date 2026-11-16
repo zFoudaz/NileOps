@@ -1,5 +1,5 @@
 import React from 'react';
-import { Navigate, useLocation } from 'react-router-dom';
+import { Navigate, useLocation, useNavigate } from 'react-router-dom';
 import { useAuth } from '@/hooks/useAuth';
 import type { UserRole } from '@/types';
 import { Loader2, ShieldAlert } from 'lucide-react';
@@ -13,6 +13,7 @@ interface ProtectedRouteProps {
 export const ProtectedRoute: React.FC<ProtectedRouteProps> = ({ children, requiredRole }) => {
   const { isAuthenticated, isLoading, role } = useAuth();
   const location = useLocation();
+  const navigate = useNavigate();
 
   if (isLoading) {
     return (
@@ -42,7 +43,7 @@ export const ProtectedRoute: React.FC<ProtectedRouteProps> = ({ children, requir
             <Button
               variant="default"
               onClick={() => {
-                window.location.href = role === 'employee' ? '/employee' : '/dashboard';
+                navigate(role === 'employee' ? '/employee' : '/dashboard');
               }}
             >
               العودة إلى لوحة التحكم

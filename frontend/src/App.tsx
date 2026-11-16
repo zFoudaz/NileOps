@@ -1,6 +1,7 @@
 import React from 'react';
 import { BrowserRouter, Routes, Route, Navigate } from 'react-router-dom';
 import { AuthProvider, useAuth } from '@/hooks/useAuth';
+import { ToastProvider } from '@/hooks/useToast';
 import { AppLayout } from '@/components/layout/AppLayout';
 import { ProtectedRoute } from '@/components/layout/ProtectedRoute';
 import { LoginPage } from '@/pages/auth/LoginPage';
@@ -59,96 +60,98 @@ const PublicOnlyRoute: React.FC<{ children: React.ReactNode }> = ({ children }) 
 export const App: React.FC = () => {
   return (
     <AuthProvider>
-      <BrowserRouter>
-        <Routes>
-          {/* Public Routes */}
-          <Route
-            path="/login"
-            element={
-              <PublicOnlyRoute>
-                <LoginPage />
-              </PublicOnlyRoute>
-            }
-          />
-          <Route
-            path="/register"
-            element={
-              <PublicOnlyRoute>
-                <RegisterPage />
-              </PublicOnlyRoute>
-            }
-          />
-
-          {/* Root Redirect */}
-          <Route path="/" element={<RootRedirect />} />
-
-          {/* Authenticated Layout Routes */}
-          <Route element={<AppLayout />}>
-            {/* Customer Routes */}
+      <ToastProvider>
+        <BrowserRouter>
+          <Routes>
+            {/* Public Routes */}
             <Route
-              path="/dashboard"
+              path="/login"
               element={
-                <ProtectedRoute requiredRole="customer">
-                  <CustomerDashboard />
-                </ProtectedRoute>
+                <PublicOnlyRoute>
+                  <LoginPage />
+                </PublicOnlyRoute>
               }
             />
             <Route
-              path="/requests/new"
+              path="/register"
               element={
-                <ProtectedRoute requiredRole="customer">
-                  <NewRequestPage />
-                </ProtectedRoute>
-              }
-            />
-            <Route
-              path="/requests/:id/upload"
-              element={
-                <ProtectedRoute requiredRole="customer">
-                  <UploadDocumentsPage />
-                </ProtectedRoute>
-              }
-            />
-            <Route
-              path="/requests/:id/review"
-              element={
-                <ProtectedRoute requiredRole="customer">
-                  <ReviewDataPage />
-                </ProtectedRoute>
-              }
-            />
-            <Route
-              path="/requests/:id"
-              element={
-                <ProtectedRoute requiredRole="customer">
-                  <RequestStatusPage />
-                </ProtectedRoute>
+                <PublicOnlyRoute>
+                  <RegisterPage />
+                </PublicOnlyRoute>
               }
             />
 
-            {/* Employee Routes */}
-            <Route
-              path="/employee"
-              element={
-                <ProtectedRoute requiredRole="employee">
-                  <EmployeeDashboard />
-                </ProtectedRoute>
-              }
-            />
-            <Route
-              path="/employee/requests/:id"
-              element={
-                <ProtectedRoute requiredRole="employee">
-                  <EmployeeRequestDetail />
-                </ProtectedRoute>
-              }
-            />
-          </Route>
+            {/* Root Redirect */}
+            <Route path="/" element={<RootRedirect />} />
 
-          {/* Catch-all */}
-          <Route path="*" element={<RootRedirect />} />
-        </Routes>
-      </BrowserRouter>
+            {/* Authenticated Layout Routes */}
+            <Route element={<AppLayout />}>
+              {/* Customer Routes */}
+              <Route
+                path="/dashboard"
+                element={
+                  <ProtectedRoute requiredRole="customer">
+                    <CustomerDashboard />
+                  </ProtectedRoute>
+                }
+              />
+              <Route
+                path="/requests/new"
+                element={
+                  <ProtectedRoute requiredRole="customer">
+                    <NewRequestPage />
+                  </ProtectedRoute>
+                }
+              />
+              <Route
+                path="/requests/:id/upload"
+                element={
+                  <ProtectedRoute requiredRole="customer">
+                    <UploadDocumentsPage />
+                  </ProtectedRoute>
+                }
+              />
+              <Route
+                path="/requests/:id/review"
+                element={
+                  <ProtectedRoute requiredRole="customer">
+                    <ReviewDataPage />
+                  </ProtectedRoute>
+                }
+              />
+              <Route
+                path="/requests/:id"
+                element={
+                  <ProtectedRoute requiredRole="customer">
+                    <RequestStatusPage />
+                  </ProtectedRoute>
+                }
+              />
+
+              {/* Employee Routes */}
+              <Route
+                path="/employee"
+                element={
+                  <ProtectedRoute requiredRole="employee">
+                    <EmployeeDashboard />
+                  </ProtectedRoute>
+                }
+              />
+              <Route
+                path="/employee/requests/:id"
+                element={
+                  <ProtectedRoute requiredRole="employee">
+                    <EmployeeRequestDetail />
+                  </ProtectedRoute>
+                }
+              />
+            </Route>
+
+            {/* Catch-all */}
+            <Route path="*" element={<RootRedirect />} />
+          </Routes>
+        </BrowserRouter>
+      </ToastProvider>
     </AuthProvider>
   );
 };

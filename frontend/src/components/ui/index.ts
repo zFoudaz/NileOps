@@ -6,3 +6,8 @@ export * from './badge';
 export * from './alert';
 export * from './table';
 export * from './dialog';
+export * from './separator';
+export * from './dropdown-menu';
+export * from './select';
+export * from './tabs';
+export * from './toast';
