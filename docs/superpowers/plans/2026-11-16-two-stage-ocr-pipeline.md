@@ -79,7 +79,7 @@
 - Modify: `backend/app/services/ocr/extractor.py`
 - Modify: `backend/tests/test_ocr_service.py`
 
-- [ ] **Step 1: Write tests for two-stage execution in `test_ocr_service.py`**
+- [x] **Step 1: Write tests for two-stage execution in `test_ocr_service.py`**
   - Test `extract_raw_text`: verifies vision LLM is called with image base64 and transcription prompt.
   - Test `parse_document_text`: verifies text LLM is called with transcribed text and parser prompt.
   - Test two-line name parsing with repeated name:
@@ -87,14 +87,14 @@
     - Expected output JSON: `{"name": "محمد محمد أحمد حسنين", "national_id": "29805141234567", ...}`
   - Test graceful fallback when `extract_raw_text` returns empty string.
 
-- [ ] **Step 2: Implement two-stage pipeline in `app/services/ocr/extractor.py`**
+- [x] **Step 2: Implement two-stage pipeline in `app/services/ocr/extractor.py`**
   - Refactor `extractor.py` to use `get_ocr_llm()` for Stage 1 and `get_parser_llm()` for Stage 2.
   - Implement `extract_raw_text(image_path: str, document_type: DocumentType) -> str`.
   - Implement `parse_document_text(raw_text: str, document_type: DocumentType) -> Dict[str, Any]`.
   - Update `extract_document_fields` to chain Stage 1 -> Stage 2.
   - Ensure `process_request_documents` remains intact and functioning with database transactions.
 
-- [ ] **Step 3: Run full backend test suite**
+- [x] **Step 3: Run full backend test suite**
   - Run `docker compose exec backend pytest` to confirm all 78+ tests pass with zero regressions.
 
 ---

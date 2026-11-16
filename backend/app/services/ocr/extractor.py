@@ -3,19 +3,18 @@ import json
 import logging
 import mimetypes
 from pathlib import Path
-from typing import Any, Dict, Optional
+from typing import Any, Dict, Optional, Union
 from uuid import UUID
 
 from langchain_core.messages import HumanMessage
-from langchain_ollama import ChatOllama
 from sqlalchemy.orm import Session
 
-from app.config import settings
 from app.database import SessionLocal
 from app.models.document import Document
 from app.models.enums import DocumentType, RequestStatus
 from app.models.request import Request
-from app.services.ocr.prompts import get_prompt
+from app.services.llm.factory import get_ocr_llm, get_parser_llm
+from app.services.ocr.prompts import get_ocr_prompt, get_parser_prompt
 from app.services.validation.business_rules import compute_auto_decision
 from app.services.validation.cross_validator import validate_request
 
@@ -64,27 +63,23 @@ def _parse_llm_json(raw_text: str) -> Dict[str, Any]:
     return {}
 
 
-def extract_document_fields(image_path: str, document_type: DocumentType) -> Dict[str, Any]:
-    """Extract fields from a document image using ChatOllama vision model."""
-    prompt = get_prompt(document_type)
-    if not prompt:
-        logger.warning("No OCR prompt found for document type %s", document_type)
-        return {}
-
+def extract_raw_text(image_path: str, document_type: Union[DocumentType, str]) -> str:
+    """Stage 1: Transcribe raw text verbatim from a document image using Vision LLM."""
     path = Path(image_path)
     if not path.is_file():
         logger.error("Image file does not exist: %s", image_path)
         raise FileNotFoundError(f"Image file does not exist: {image_path}")
 
+    prompt = get_ocr_prompt(document_type)
+    if not prompt:
+        logger.warning("No OCR prompt found for document type %s", document_type)
+        return ""
+
     image_bytes = path.read_bytes()
     b64_image = base64.b64encode(image_bytes).decode("utf-8")
     mime_type = mimetypes.guess_type(image_path)[0] or "image/jpeg"
 
-    llm = ChatOllama(
-        base_url=settings.OLLAMA_BASE_URL,
-        model=settings.OLLAMA_MODEL,
-        reasoning=False
-    )
+    llm = get_ocr_llm()
     message = HumanMessage(
         content=[
             {"type": "text", "text": prompt},
@@ -104,7 +99,41 @@ def extract_document_fields(image_path: str, document_type: DocumentType) -> Dic
     else:
         content_str = str(content)
 
+    return content_str
+
+
+def parse_document_text(raw_text: str, document_type: Union[DocumentType, str]) -> Dict[str, Any]:
+    """Stage 2: Parse raw transcribed text into structured JSON using Text LLM."""
+    if not raw_text or not raw_text.strip():
+        return {}
+
+    prompt = get_parser_prompt(document_type)
+    if not prompt:
+        logger.warning("No parser prompt found for document type %s", document_type)
+        return {}
+
+    llm = get_parser_llm()
+    user_prompt = f"{prompt}\n\nDocument Text:\n\"\"\"\n{raw_text}\n\"\"\""
+    message = HumanMessage(content=user_prompt)
+    response = llm.invoke([message])
+    content = response.content
+    if isinstance(content, list):
+        content_str = "".join(
+            part if isinstance(part, str) else part.get("text", "")
+            for part in content
+        )
+    else:
+        content_str = str(content)
+
     return _parse_llm_json(content_str)
+
+
+def extract_document_fields(image_path: str, document_type: Union[DocumentType, str]) -> Dict[str, Any]:
+    """Extract fields from a document image via two-stage OCR pipeline (vision transcription + text parsing)."""
+    raw_text = extract_raw_text(image_path, document_type)
+    if not raw_text or not raw_text.strip():
+        return {}
+    return parse_document_text(raw_text, document_type)
 
 
 def process_request_documents(request_id: UUID, db: Optional[Session] = None) -> None:

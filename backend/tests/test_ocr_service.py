@@ -9,8 +9,20 @@ from app.models.enums import DocumentType, RequestStatus, UserRole
 from app.models.request import Request
 from app.models.user import User
 from app.services.request_types.account_opening import OCR_DOCUMENTS
-from app.services.ocr.prompts import PROMPTS
-from app.services.ocr.extractor import extract_document_fields, process_request_documents
+from app.services.ocr.prompts import (
+    OCR_PROMPTS,
+    PARSER_PROMPTS,
+    PROMPTS,
+    get_ocr_prompt,
+    get_parser_prompt,
+)
+from app.services.ocr.extractor import (
+    _parse_llm_json,
+    extract_document_fields,
+    extract_raw_text,
+    parse_document_text,
+    process_request_documents,
+)
 
 
 def get_customer_auth(client, email="ocr_user@example.com"):
@@ -27,6 +39,10 @@ def get_customer_auth(client, email="ocr_user@example.com"):
     return resp.json()["access_token"]
 
 
+# ---------------------------------------------------------------------------
+# Prompt & Parsing Unit Tests
+# ---------------------------------------------------------------------------
+
 def test_prompts_cover_all_ocr_documents():
     """Verify PROMPTS defines instructions for every OCR-requiring DocumentType."""
     assert len(OCR_DOCUMENTS) == 6
@@ -36,22 +52,250 @@ def test_prompts_cover_all_ocr_documents():
         assert "valid JSON" in prompt_text or "JSON" in prompt_text
 
 
-def test_extract_national_id_front(tmp_path):
-    """Mock ChatOllama returns valid JSON -> fields parsed correctly."""
+def test_parse_llm_json_variants():
+    """Verify _parse_llm_json handles plain, markdown fenced, and outer-bracketed JSON."""
+    # Plain JSON
+    data = {"name": "أحمد", "national_id": "29501011234567"}
+    assert _parse_llm_json(json.dumps(data)) == data
+
+    # Markdown fence with 'json'
+    fenced_json = f"```json\n{json.dumps(data)}\n```"
+    assert _parse_llm_json(fenced_json) == data
+
+    # Markdown fence without language tag
+    fenced_raw = f"```\n{json.dumps(data)}\n```"
+    assert _parse_llm_json(fenced_raw) == data
+
+    # Text before and after JSON object
+    noisy_text = f"Here is the result:\n{json.dumps(data)}\nHope that helps!"
+    assert _parse_llm_json(noisy_text) == data
+
+    # Empty and whitespace
+    assert _parse_llm_json("") == {}
+    assert _parse_llm_json("   \n\t  ") == {}
+
+    # Invalid / garbage text
+    assert _parse_llm_json("No JSON content available") == {}
+
+
+# ---------------------------------------------------------------------------
+# Stage 1: extract_raw_text Tests
+# ---------------------------------------------------------------------------
+
+def test_extract_raw_text(tmp_path):
+    """Stage 1: Verify Vision LLM is called with image base64 and transcription prompt."""
     dummy_img = tmp_path / "id_front.jpg"
     dummy_img.write_bytes(b"dummy image bytes")
 
-    mock_response = MagicMock()
-    mock_response.content = json.dumps({
+    mock_resp = MagicMock()
+    mock_resp.content = "بطاقة تحقيق الشخصية\nأحمد محمود علي\n29501011234567"
+
+    with patch("app.services.ocr.extractor.get_ocr_llm") as mock_get_llm:
+        mock_llm = MagicMock()
+        mock_llm.invoke.return_value = mock_resp
+        mock_get_llm.return_value = mock_llm
+
+        raw_text = extract_raw_text(str(dummy_img), DocumentType.NATIONAL_ID_FRONT)
+
+        assert raw_text == "بطاقة تحقيق الشخصية\nأحمد محمود علي\n29501011234567"
+        mock_llm.invoke.assert_called_once()
+        invoked_message = mock_llm.invoke.call_args[0][0][0]
+        # Check text prompt contains Stage 1 OCR prompt
+        assert invoked_message.content[0]["text"] == get_ocr_prompt(DocumentType.NATIONAL_ID_FRONT)
+        # Check image payload is base64 encoded
+        assert invoked_message.content[1]["image_url"].startswith("data:image/jpeg;base64,")
+
+
+def test_extract_raw_text_missing_file():
+    """Stage 1: Non-existent image file raises FileNotFoundError."""
+    with pytest.raises(FileNotFoundError):
+        extract_raw_text("non_existent_file_xyz.jpg", DocumentType.NATIONAL_ID_FRONT)
+
+
+def test_extract_raw_text_empty_prompt(tmp_path):
+    """Stage 1: Unsupported document type with empty prompt returns empty string without invoking LLM."""
+    dummy_img = tmp_path / "doc.jpg"
+    dummy_img.write_bytes(b"dummy bytes")
+
+    with patch("app.services.ocr.extractor.get_ocr_llm") as mock_get_llm:
+        mock_llm = MagicMock()
+        mock_get_llm.return_value = mock_llm
+
+        result = extract_raw_text(str(dummy_img), "unsupported_type")
+        assert result == ""
+        mock_llm.invoke.assert_not_called()
+
+
+# ---------------------------------------------------------------------------
+# Stage 2: parse_document_text Tests
+# ---------------------------------------------------------------------------
+
+def test_parse_document_text():
+    """Stage 2: Verify Text LLM is called with transcribed text and parser prompt."""
+    expected = {
+        "name": "أحمد محمود علي",
+        "national_id": "29501011234567",
+        "address": "12 شارع النيل، الجيزة",
+    }
+    mock_resp = MagicMock()
+    mock_resp.content = json.dumps(expected)
+
+    raw_text = "بطاقة الرقم القومي\nأحمد محمود علي\n29501011234567\n12 شارع النيل، الجيزة"
+
+    with patch("app.services.ocr.extractor.get_parser_llm") as mock_get_llm:
+        mock_llm = MagicMock()
+        mock_llm.invoke.return_value = mock_resp
+        mock_get_llm.return_value = mock_llm
+
+        parsed = parse_document_text(raw_text, DocumentType.NATIONAL_ID_FRONT)
+
+        assert parsed == expected
+        mock_llm.invoke.assert_called_once()
+        invoked_content = mock_llm.invoke.call_args[0][0][0].content
+        assert get_parser_prompt(DocumentType.NATIONAL_ID_FRONT) in invoked_content
+        assert raw_text in invoked_content
+
+
+def test_parse_document_text_empty_input():
+    """Stage 2: Empty or whitespace raw text returns {} without calling parser LLM."""
+    with patch("app.services.ocr.extractor.get_parser_llm") as mock_get_llm:
+        mock_llm = MagicMock()
+        mock_get_llm.return_value = mock_llm
+
+        assert parse_document_text("", DocumentType.NATIONAL_ID_FRONT) == {}
+        assert parse_document_text("   \n\t ", DocumentType.NATIONAL_ID_FRONT) == {}
+        mock_llm.invoke.assert_not_called()
+
+
+def test_parse_document_text_empty_prompt():
+    """Stage 2: Unsupported document type with empty prompt returns {}."""
+    with patch("app.services.ocr.extractor.get_parser_llm") as mock_get_llm:
+        mock_llm = MagicMock()
+        mock_get_llm.return_value = mock_llm
+
+        result = parse_document_text("Some transcribed text", "unsupported_type")
+        assert result == {}
+        mock_llm.invoke.assert_not_called()
+
+
+def test_parse_document_text_egyptian_id_name_repetition():
+    """Stage 2: Handles Egyptian National ID split-line name with repeated father/son names."""
+    raw_text = "محمد\nمحمد أحمد حسنين\nبطاقة تحقيق الشخصية\n29805141234567\n15 شارع الهرم، الجيزة"
+
+    mock_resp = MagicMock()
+    mock_resp.content = json.dumps({
+        "name": "محمد محمد أحمد حسنين",
+        "national_id": "29805141234567",
+        "address": "15 شارع الهرم، الجيزة",
+    })
+
+    with patch("app.services.ocr.extractor.get_parser_llm") as mock_get_llm:
+        mock_llm = MagicMock()
+        mock_llm.invoke.return_value = mock_resp
+        mock_get_llm.return_value = mock_llm
+
+        result = parse_document_text(raw_text, DocumentType.NATIONAL_ID_FRONT)
+
+        # Verify parser prompt was constructed and sent
+        sent_content = mock_llm.invoke.call_args[0][0][0].content
+        assert raw_text in sent_content
+        # Verify Egyptian ID domain instructions are embedded in the prompt sent
+        assert "TWO lines" in sent_content
+        assert "keep BOTH occurrences" in sent_content or "never omit" in sent_content.lower()
+
+        # Verify parsed name preserved both occurrences
+        assert result["name"] == "محمد محمد أحمد حسنين"
+        assert result["national_id"] == "29805141234567"
+        assert result["address"] == "15 شارع الهرم، الجيزة"
+
+
+# ---------------------------------------------------------------------------
+# Chaining & Backward Compatibility: extract_document_fields Tests
+# ---------------------------------------------------------------------------
+
+def test_extract_document_fields_chains_two_stages(tmp_path):
+    """End-to-end: extract_document_fields coordinates Stage 1 Vision -> Stage 2 Text LLM."""
+    dummy_img = tmp_path / "id_front.jpg"
+    dummy_img.write_bytes(b"dummy image bytes")
+
+    mock_ocr_resp = MagicMock()
+    mock_ocr_resp.content = "محمد\nمحمد أحمد حسنين\n29805141234567\n15 شارع الهرم، الجيزة"
+
+    mock_parser_resp = MagicMock()
+    mock_parser_resp.content = json.dumps({
+        "name": "محمد محمد أحمد حسنين",
+        "national_id": "29805141234567",
+        "address": "15 شارع الهرم، الجيزة",
+    })
+
+    with patch("app.services.ocr.extractor.get_ocr_llm") as mock_get_ocr, \
+         patch("app.services.ocr.extractor.get_parser_llm") as mock_get_parser:
+        mock_ocr_llm = MagicMock()
+        mock_ocr_llm.invoke.return_value = mock_ocr_resp
+        mock_get_ocr.return_value = mock_ocr_llm
+
+        mock_parser_llm = MagicMock()
+        mock_parser_llm.invoke.return_value = mock_parser_resp
+        mock_get_parser.return_value = mock_parser_llm
+
+        result = extract_document_fields(str(dummy_img), DocumentType.NATIONAL_ID_FRONT)
+
+        assert result["name"] == "محمد محمد أحمد حسنين"
+        assert result["national_id"] == "29805141234567"
+        assert result["address"] == "15 شارع الهرم، الجيزة"
+
+        mock_ocr_llm.invoke.assert_called_once()
+        mock_parser_llm.invoke.assert_called_once()
+
+
+def test_extract_document_fields_empty_ocr_fallback(tmp_path):
+    """When Stage 1 returns empty or whitespace text, Stage 2 is skipped and {} is returned."""
+    dummy_img = tmp_path / "empty_doc.jpg"
+    dummy_img.write_bytes(b"dummy image bytes")
+
+    mock_ocr_resp = MagicMock()
+    mock_ocr_resp.content = "   \n\t  "
+
+    with patch("app.services.ocr.extractor.get_ocr_llm") as mock_get_ocr, \
+         patch("app.services.ocr.extractor.get_parser_llm") as mock_get_parser:
+        mock_ocr_llm = MagicMock()
+        mock_ocr_llm.invoke.return_value = mock_ocr_resp
+        mock_get_ocr.return_value = mock_ocr_llm
+
+        mock_parser_llm = MagicMock()
+        mock_get_parser.return_value = mock_parser_llm
+
+        result = extract_document_fields(str(dummy_img), DocumentType.NATIONAL_ID_FRONT)
+
+        assert result == {}
+        mock_ocr_llm.invoke.assert_called_once()
+        mock_parser_llm.invoke.assert_not_called()
+
+
+def test_extract_national_id_front(tmp_path):
+    """End-to-end: Valid LLM outputs parse fields correctly."""
+    dummy_img = tmp_path / "id_front.jpg"
+    dummy_img.write_bytes(b"dummy image bytes")
+
+    mock_ocr_resp = MagicMock()
+    mock_ocr_resp.content = "أحمد محمود علي\n29501011234567\n12 شارع النيل، الجيزة"
+
+    mock_parser_resp = MagicMock()
+    mock_parser_resp.content = json.dumps({
         "name": "أحمد محمود علي",
         "national_id": "29501011234567",
         "address": "12 شارع النيل، الجيزة",
     })
 
-    with patch("app.services.ocr.extractor.ChatOllama") as mock_chat_cls:
-        mock_instance = MagicMock()
-        mock_chat_cls.return_value = mock_instance
-        mock_instance.invoke.return_value = mock_response
+    with patch("app.services.ocr.extractor.get_ocr_llm") as mock_get_ocr, \
+         patch("app.services.ocr.extractor.get_parser_llm") as mock_get_parser:
+        mock_ocr_llm = MagicMock()
+        mock_ocr_llm.invoke.return_value = mock_ocr_resp
+        mock_get_ocr.return_value = mock_ocr_llm
+
+        mock_parser_llm = MagicMock()
+        mock_parser_llm.invoke.return_value = mock_parser_resp
+        mock_get_parser.return_value = mock_parser_llm
 
         result = extract_document_fields(str(dummy_img), DocumentType.NATIONAL_ID_FRONT)
 
@@ -62,21 +306,29 @@ def test_extract_national_id_front(tmp_path):
 
 
 def test_extract_handles_markdown_code_fence(tmp_path):
-    """Mock ChatOllama returns markdown-wrapped JSON -> fences stripped and parsed."""
+    """End-to-end: Markdown-wrapped JSON in parser LLM response is stripped and parsed."""
     dummy_img = tmp_path / "id_front_fence.jpg"
     dummy_img.write_bytes(b"dummy image bytes")
 
-    mock_response = MagicMock()
-    mock_response.content = "```json\n" + json.dumps({
+    mock_ocr_resp = MagicMock()
+    mock_ocr_resp.content = "محمود سمير\n29001011234567\nالإسكندرية"
+
+    mock_parser_resp = MagicMock()
+    mock_parser_resp.content = "```json\n" + json.dumps({
         "name": "محمود سمير",
         "national_id": "29001011234567",
         "address": "الإسكندرية",
     }) + "\n```"
 
-    with patch("app.services.ocr.extractor.ChatOllama") as mock_chat_cls:
-        mock_instance = MagicMock()
-        mock_chat_cls.return_value = mock_instance
-        mock_instance.invoke.return_value = mock_response
+    with patch("app.services.ocr.extractor.get_ocr_llm") as mock_get_ocr, \
+         patch("app.services.ocr.extractor.get_parser_llm") as mock_get_parser:
+        mock_ocr_llm = MagicMock()
+        mock_ocr_llm.invoke.return_value = mock_ocr_resp
+        mock_get_ocr.return_value = mock_ocr_llm
+
+        mock_parser_llm = MagicMock()
+        mock_parser_llm.invoke.return_value = mock_parser_resp
+        mock_get_parser.return_value = mock_parser_llm
 
         result = extract_document_fields(str(dummy_img), DocumentType.NATIONAL_ID_FRONT)
 
@@ -85,22 +337,64 @@ def test_extract_handles_markdown_code_fence(tmp_path):
 
 
 def test_extract_returns_invalid_json(tmp_path):
-    """Mock ChatOllama returns garbage -> handles gracefully and returns empty dict."""
+    """End-to-end: Parser LLM returning garbage handles gracefully and returns empty dict."""
     dummy_img = tmp_path / "garbage.jpg"
     dummy_img.write_bytes(b"dummy image bytes")
 
-    mock_response = MagicMock()
-    mock_response.content = "Sorry, I cannot read this image clearly. Please provide a better photo."
+    mock_ocr_resp = MagicMock()
+    mock_ocr_resp.content = "Some raw text"
 
-    with patch("app.services.ocr.extractor.ChatOllama") as mock_chat_cls:
-        mock_instance = MagicMock()
-        mock_chat_cls.return_value = mock_instance
-        mock_instance.invoke.return_value = mock_response
+    mock_parser_resp = MagicMock()
+    mock_parser_resp.content = "Sorry, I cannot read this image clearly. Please provide a better photo."
+
+    with patch("app.services.ocr.extractor.get_ocr_llm") as mock_get_ocr, \
+         patch("app.services.ocr.extractor.get_parser_llm") as mock_get_parser:
+        mock_ocr_llm = MagicMock()
+        mock_ocr_llm.invoke.return_value = mock_ocr_resp
+        mock_get_ocr.return_value = mock_ocr_llm
+
+        mock_parser_llm = MagicMock()
+        mock_parser_llm.invoke.return_value = mock_parser_resp
+        mock_get_parser.return_value = mock_parser_llm
 
         result = extract_document_fields(str(dummy_img), DocumentType.NATIONAL_ID_FRONT)
 
         assert result == {}
 
+
+def test_extract_dynamic_mime_type(tmp_path):
+    """Verify MIME type is dynamically guessed from file extension (e.g. image/png)."""
+    dummy_png = tmp_path / "sample.png"
+    dummy_png.write_bytes(b"png data")
+
+    mock_ocr_resp = MagicMock()
+    mock_ocr_resp.content = "transcribed text"
+
+    mock_parser_resp = MagicMock()
+    mock_parser_resp.content = json.dumps({"name": "Test User", "national_id": "29501011234567", "address": "Cairo"})
+
+    with patch("app.services.ocr.extractor.get_ocr_llm") as mock_get_ocr, \
+         patch("app.services.ocr.extractor.get_parser_llm") as mock_get_parser:
+        mock_ocr_llm = MagicMock()
+        mock_ocr_llm.invoke.return_value = mock_ocr_resp
+        mock_get_ocr.return_value = mock_ocr_llm
+
+        mock_parser_llm = MagicMock()
+        mock_parser_llm.invoke.return_value = mock_parser_resp
+        mock_get_parser.return_value = mock_parser_llm
+
+        extract_document_fields(str(dummy_png), DocumentType.NATIONAL_ID_FRONT)
+
+        # Inspect the message sent to vision invoke
+        call_args = mock_ocr_llm.invoke.call_args[0][0]
+        human_message = call_args[0]
+        image_part = human_message.content[1]
+        assert image_part["image_url"].startswith("data:image/png;base64,")
+
+
+# ---------------------------------------------------------------------------
+# Request Document Processing & Workflow Tests
+# ---------------------------------------------------------------------------
 
 def test_process_request_documents(db_session, tmp_path):
     """Process OCR for all OCR-required documents of a request."""
@@ -392,26 +686,3 @@ def test_process_preserves_uncompleted_on_connection_error(db_session, tmp_path)
         db_session.refresh(doc)
         assert doc.ocr_completed is False
         assert doc.extracted_data is None
-
-
-def test_extract_dynamic_mime_type(tmp_path):
-    """Verify MIME type is dynamically guessed from file extension (e.g. image/png)."""
-    dummy_png = tmp_path / "sample.png"
-    dummy_png.write_bytes(b"png data")
-
-    mock_response = MagicMock()
-    mock_response.content = json.dumps({"name": "Test User", "national_id": "29501011234567", "address": "Cairo"})
-
-    with patch("app.services.ocr.extractor.ChatOllama") as mock_chat_cls:
-        mock_instance = MagicMock()
-        mock_chat_cls.return_value = mock_instance
-        mock_instance.invoke.return_value = mock_response
-
-        extract_document_fields(str(dummy_png), DocumentType.NATIONAL_ID_FRONT)
-
-        # Inspect the message sent to invoke
-        call_args = mock_instance.invoke.call_args[0][0]
-        human_message = call_args[0]
-        image_part = human_message.content[1]
-        assert image_part["image_url"].startswith("data:image/png;base64,")
-
