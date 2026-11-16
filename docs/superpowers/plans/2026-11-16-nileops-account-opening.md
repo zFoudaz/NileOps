@@ -425,30 +425,30 @@ git commit -m "feat: customer pages — request creation, upload, OCR review, an
 - Consumes: Backend employee APIs, `useAuth()`, `api` client, shadcn components (Table, Badge, Dialog, Select)
 - Produces: Complete employee-facing UI
 
-- [ ] **Step 1: Build EmployeeDashboardPage**
+- [x] **Step 1: Build EmployeeDashboardPage**
 
 Table of all requests using shadcn Table. Columns: request ID (short), customer name, request type, account type, auto-decision badge, status badge, created date, verified by. Filters at top: status dropdown, account type dropdown, date range. Pagination. Click row → navigate to detail page.
 
-- [ ] **Step 2: Build DocumentViewer component**
+- [x] **Step 2: Build DocumentViewer component**
 
 Displays uploaded document image with zoom and pan. Used in employee detail page to show original documents side-by-side with extracted data.
 
-- [ ] **Step 3: Build RequestDetailPage**
+- [x] **Step 3: Build RequestDetailPage**
 
 Two-column layout:
 - **Left:** Extracted data grouped by document. For each field: label, OCR original value, corrected value (if any, highlighted). Validation results with pass/fail badges. Auto-decision banner.
 - **Right:** Document images using `DocumentViewer`. Tabs for each document.
 - **Bottom:** Action bar — "موافقة" (approve) button (green), "رفض" (reject) button (red) with required reason text input. Confirmation dialog before action. Shows "تم التحقق بواسطة: [employee name]" if already verified.
 
-- [ ] **Step 4: Wire up verify action**
+- [x] **Step 4: Wire up verify action**
 
 Approve → POST `/employee/requests/{id}/verify` with `{decision: "approved"}`. Reject → dialog asks for reason → POST with `{decision: "rejected", reason: "..."}`. On success → toast notification + redirect to dashboard. On 409 (already verified) → show warning.
 
-- [ ] **Step 5: Verify end-to-end**
+- [x] **Step 5: Verify end-to-end**
 
 Full flow: login as employee → see pending requests → open one → review data + images → approve → request status updates. Test reject with reason. Verify employee name recorded.
 
-- [ ] **Step 6: Commit**
+- [x] **Step 6: Commit**
 
 ```bash
 git add -A
