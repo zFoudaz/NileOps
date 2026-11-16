@@ -13,8 +13,11 @@ from sqlalchemy.orm import Session
 from app.config import settings
 from app.database import SessionLocal
 from app.models.document import Document
-from app.models.enums import DocumentType
+from app.models.enums import DocumentType, RequestStatus
+from app.models.request import Request
 from app.services.ocr.prompts import get_prompt
+from app.services.validation.business_rules import compute_auto_decision
+from app.services.validation.cross_validator import validate_request
 
 logger = logging.getLogger(__name__)
 
@@ -128,6 +131,15 @@ def process_request_documents(request_id: UUID, db: Optional[Session] = None) ->
                 doc.ocr_completed = True
             except Exception as e:
                 logger.error("Error processing document %s for request %s: %s", doc.id, request_id, e)
+
+        # Cross-validation and auto-decision
+        validations = validate_request(request_id, db)
+        decision = compute_auto_decision(validations)
+
+        req = db.query(Request).filter(Request.id == request_id).first()
+        if req:
+            req.auto_decision = decision
+            req.status = RequestStatus.PENDING_REVIEW
 
         db.commit()
     except Exception as e:
