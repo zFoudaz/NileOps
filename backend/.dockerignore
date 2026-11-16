@@ -1,0 +1,16 @@
+.venv
+__pycache__
+*.pyc
+*.pyo
+*.pyd
+.pytest_cache
+.coverage
+htmlcov
+.git
+.env
+uploads/*
+!uploads/.gitkeep
+nileops.db
+check_db.py
+check_req.py
+test_ocr_on_samples.py
