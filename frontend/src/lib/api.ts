@@ -37,4 +37,22 @@ api.interceptors.response.use(
   }
 );
 
+export const getApiBaseUrl = (): string => {
+  return (import.meta.env.VITE_API_URL || 'http://localhost:8000/api').replace(/\/api\/?$/, '');
+};
+
+export const resolveImageUrl = (path?: string | null): string => {
+  if (!path) return '';
+  if (
+    path.startsWith('http://') ||
+    path.startsWith('https://') ||
+    path.startsWith('blob:') ||
+    path.startsWith('data:')
+  ) {
+    return path;
+  }
+  const cleanPath = path.startsWith('/') ? path : `/${path}`;
+  return `${getApiBaseUrl()}${cleanPath}`;
+};
+
 export default api;

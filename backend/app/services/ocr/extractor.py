@@ -139,7 +139,7 @@ def process_request_documents(request_id: UUID, db: Optional[Session] = None) ->
         req = db.query(Request).filter(Request.id == request_id).first()
         if req:
             req.auto_decision = decision
-            req.status = RequestStatus.PENDING_REVIEW
+            req.status = RequestStatus.PENDING_CORRECTION
 
         db.commit()
     except Exception as e:

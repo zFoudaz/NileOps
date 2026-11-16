@@ -1,9 +1,10 @@
-import React, { useState, useRef, type DragEvent, type ChangeEvent } from 'react';
+import React, { useState, useRef, useEffect, type DragEvent, type ChangeEvent } from 'react';
 import { UploadCloud, CheckCircle2, AlertCircle, Loader2, RefreshCw, Eye } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import type { Document, DocumentType } from '@/types';
 import { cn } from '@/lib/utils';
+import { resolveImageUrl } from '@/lib/api';
 
 interface FileUploadProps {
   documentType: DocumentType;
@@ -33,6 +34,14 @@ export const FileUpload: React.FC<FileUploadProps> = ({
   const [showModal, setShowModal] = useState<boolean>(false);
   const fileInputRef = useRef<HTMLInputElement>(null);
 
+  useEffect(() => {
+    return () => {
+      if (localPreviewUrl) {
+        URL.revokeObjectURL(localPreviewUrl);
+      }
+    };
+  }, [localPreviewUrl]);
+
   const validateFile = (file: File): string | null => {
     if (!ALLOWED_TYPES.includes(file.type) && !file.name.match(/\.(jpg|jpeg|png|webp|bmp|gif)$/i)) {
       return 'نوع الملف غير مدعوم. يرجى رفع ملف صورة بصيغة (JPG, PNG, WebP).';
@@ -54,7 +63,10 @@ export const FileUpload: React.FC<FileUploadProps> = ({
     setIsUploading(true);
     setUploadProgress(20);
 
-    // Create local object URL for instant preview
+    // Clean up previous preview object URL before generating new one
+    if (localPreviewUrl) {
+      URL.revokeObjectURL(localPreviewUrl);
+    }
     const preview = URL.createObjectURL(file);
     setLocalPreviewUrl(preview);
 
@@ -68,6 +80,7 @@ export const FileUpload: React.FC<FileUploadProps> = ({
     } catch (err: unknown) {
       const msg = err instanceof Error ? err.message : 'حدث خطأ أثناء رفع الملف';
       setErrorMessage(msg);
+      URL.revokeObjectURL(preview);
       setLocalPreviewUrl(null);
     } finally {
       clearInterval(progressInterval);
@@ -114,13 +127,8 @@ export const FileUpload: React.FC<FileUploadProps> = ({
   };
 
   const isUploaded = Boolean(existingDoc || (localPreviewUrl && !errorMessage && !isUploading));
-  const previewImage =
-    localPreviewUrl ||
-    (existingDoc?.image_url
-      ? existingDoc.image_url.startsWith('http')
-        ? existingDoc.image_url
-        : `http://localhost:8000${existingDoc.image_url.startsWith('/') ? '' : '/'}${existingDoc.image_url}`
-      : null);
+  const existingImageUrl = existingDoc ? resolveImageUrl(existingDoc.image_url || existingDoc.file_path) : null;
+  const previewImage = localPreviewUrl || existingImageUrl;
 
   return (
     <div className="rounded-xl border border-slate-200 bg-white p-5 shadow-sm transition hover:border-slate-300">

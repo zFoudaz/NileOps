@@ -298,7 +298,7 @@ def test_process_request_documents_integration(db_session, tmp_path):
         process_request_documents(req.id, db=db_session)
 
     db_session.refresh(req)
-    assert req.status == RequestStatus.PENDING_REVIEW
+    assert req.status == RequestStatus.PENDING_CORRECTION
     assert req.auto_decision == AutoDecision.AUTO_APPROVED
 
     # Check validation results were persisted

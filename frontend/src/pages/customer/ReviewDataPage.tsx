@@ -12,6 +12,7 @@ import {
   Sparkles,
   Info,
   CheckCircle2,
+  Clock,
 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent } from '@/components/ui/card';
@@ -23,6 +24,7 @@ import { useRequests } from '@/hooks/useRequests';
 import { useToast } from '@/hooks/useToast';
 import type { ExtractedDataResponse, DocumentExtractedData } from '@/types';
 import { DOCUMENT_TYPE_LABELS, AUTO_DECISION_LABELS } from '@/lib/constants';
+import { resolveImageUrl } from '@/lib/api';
 
 export const ReviewDataPage: React.FC = () => {
   const { id } = useParams<{ id: string }>();
@@ -192,6 +194,28 @@ export const ReviewDataPage: React.FC = () => {
         </div>
       </div>
 
+      {/* Pending Employee Review Banner */}
+      {extractedData.status === 'pending_review' && (
+        <div className="rounded-2xl border border-indigo-200 bg-indigo-50/80 p-5 shadow-xs flex items-start gap-4">
+          <div className="h-10 w-10 rounded-xl bg-indigo-100 text-indigo-700 flex items-center justify-center shrink-0">
+            <Clock className="h-6 w-6" />
+          </div>
+          <div className="flex-1">
+            <div className="flex items-center gap-2">
+              <h3 className="text-base font-bold text-indigo-950">
+                تم إرسال هذا الطلب بنجاح وهو الآن قيد تدقيق ومراجعة موظف البنك
+              </h3>
+              <Badge variant="default" className="text-xs bg-indigo-600 hover:bg-indigo-700">
+                قيد المراجعة
+              </Badge>
+            </div>
+            <p className="text-xs text-indigo-800 mt-1 leading-relaxed">
+              تم استلام كافة البيانات والمستندات وجاري فحصها من قبل مسؤول فتح الحسابات. لا يمكن تعديل البيانات أثناء هذه المرحلة.
+            </p>
+          </div>
+        </div>
+      )}
+
       {/* Auto Decision Banner */}
       {extractedData.auto_decision === 'auto_approved' && (
         <div className="rounded-2xl border border-emerald-300 bg-emerald-50/70 p-5 shadow-xs flex items-start gap-4">
@@ -293,11 +317,8 @@ export const ReviewDataPage: React.FC = () => {
 
               {documents.map((doc: DocumentExtractedData) => {
                 const docId = doc.document_id || doc.id;
-                const docImgUrl = doc.image_url
-                  ? doc.image_url.startsWith('http')
-                    ? doc.image_url
-                    : `http://localhost:8000${doc.image_url.startsWith('/') ? '' : '/'}${doc.image_url}`
-                  : null;
+                const rawUrl = doc.image_url || doc.file_path;
+                const docImgUrl = rawUrl ? resolveImageUrl(rawUrl) : null;
 
                 return (
                   <TabsContent key={docId} value={docId} className="space-y-6 pt-2">

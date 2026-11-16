@@ -6,6 +6,7 @@ import {
   XCircle,
   Clock,
   ArrowRight,
+  ShieldCheck,
   ShieldAlert,
   Eye,
   RefreshCw,
@@ -26,7 +27,9 @@ import {
   STATUS_LABELS,
   STATUS_VARIANTS,
   DOCUMENT_TYPE_LABELS,
+  AUTO_DECISION_LABELS,
 } from '@/lib/constants';
+import { resolveImageUrl } from '@/lib/api';
 
 interface TimelineStep {
   step: number;
@@ -437,6 +440,61 @@ export const RequestStatusPage: React.FC = () => {
         </CardContent>
       </Card>
 
+      {/* Auto Decision Banner */}
+      {request.auto_decision === 'auto_approved' && (
+        <div className="rounded-2xl border border-emerald-300 bg-emerald-50/80 p-5 shadow-xs flex items-start gap-4">
+          <div className="h-10 w-10 rounded-xl bg-emerald-100 text-emerald-700 flex items-center justify-center shrink-0">
+            <ShieldCheck className="h-6 w-6" />
+          </div>
+          <div className="flex-1">
+            <div className="flex items-center gap-2">
+              <h3 className="text-base font-bold text-emerald-950">
+                {AUTO_DECISION_LABELS.auto_approved}
+              </h3>
+              <Badge variant="success" className="text-xs">
+                مطابق للشروط 100%
+              </Badge>
+            </div>
+            <p className="text-xs text-emerald-800 mt-1 leading-relaxed">
+              اجتازت المستندات كافة قواعد الفحص الآلي بنجاح (سريان البطاقة ومطابقة السن لنوع الحساب).
+            </p>
+          </div>
+        </div>
+      )}
+
+      {request.auto_decision === 'auto_rejected' && (
+        <div className="rounded-2xl border border-rose-300 bg-rose-50/90 p-5 shadow-xs flex items-start gap-4">
+          <div className="h-10 w-10 rounded-xl bg-rose-100 text-rose-700 flex items-center justify-center shrink-0">
+            <ShieldAlert className="h-6 w-6" />
+          </div>
+          <div className="flex-1">
+            <div className="flex items-center gap-2">
+              <h3 className="text-base font-bold text-rose-950">
+                {AUTO_DECISION_LABELS.auto_rejected}
+              </h3>
+              <Badge variant="destructive" className="text-xs">
+                غير مستوفٍ للشروط
+              </Badge>
+            </div>
+            <p className="text-xs text-rose-800 mt-1 leading-relaxed">
+              أظهر الفحص الآلي وجود شروط غير مستوفاة في المستندات المرفقة (مثل انتهاء الصلاحية أو عدم مطابقة السن).
+            </p>
+          </div>
+        </div>
+      )}
+
+      {!request.auto_decision && (request.status === 'processing' || request.status === 'pending_upload') && (
+        <div className="rounded-2xl border border-slate-200 bg-slate-50 p-4 shadow-xs flex items-start gap-3">
+          <Clock className="h-5 w-5 text-slate-500 shrink-0 mt-0.5" />
+          <div>
+            <h4 className="text-sm font-semibold text-slate-800">القرار الآلي: قيد التقييم الآلي</h4>
+            <p className="text-xs text-slate-500 mt-0.5">
+              سيتم احتساب القرار الآلي فور استكمال رفع ومعالجة المستندات المطلوبة.
+            </p>
+          </div>
+        </div>
+      )}
+
       {/* Validation Results Badges */}
       {request.validation_results && request.validation_results.length > 0 && (
         <Card className="border-slate-200 bg-white shadow-xs">
@@ -469,11 +527,8 @@ export const RequestStatusPage: React.FC = () => {
 
             <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-4">
               {request.documents.map((doc) => {
-                const imgUrl = doc.image_url
-                  ? doc.image_url.startsWith('http')
-                    ? doc.image_url
-                    : `http://localhost:8000${doc.image_url.startsWith('/') ? '' : '/'}${doc.image_url}`
-                  : null;
+                const rawUrl = doc.image_url || doc.file_path;
+                const imgUrl = rawUrl ? resolveImageUrl(rawUrl) : null;
 
                 return (
                   <div

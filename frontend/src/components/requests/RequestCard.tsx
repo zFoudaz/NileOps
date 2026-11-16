@@ -3,7 +3,7 @@ import { useNavigate } from 'react-router-dom';
 import { Calendar, ChevronLeft, ShieldCheck, ShieldAlert, FileText } from 'lucide-react';
 import { Card, CardContent } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
-import type { BankRequest, RequestStatus } from '@/types';
+import type { BankRequest } from '@/types';
 import { ACCOUNT_TYPES_INFO, STATUS_LABELS, STATUS_VARIANTS } from '@/lib/constants';
 
 interface RequestCardProps {
@@ -30,23 +30,11 @@ export const RequestCard: React.FC<RequestCardProps> = ({ request, onClick }) =>
     day: 'numeric',
   });
 
-  const getTargetRoute = (status: RequestStatus, id: string): string => {
-    switch (status) {
-      case 'pending_upload':
-        return `/requests/${id}/upload`;
-      case 'pending_correction':
-      case 'processing':
-        return `/requests/${id}/review`;
-      default:
-        return `/requests/${id}`;
-    }
-  };
-
   const handleClick = () => {
     if (onClick) {
       onClick();
     } else {
-      navigate(getTargetRoute(request.status, request.id));
+      navigate(`/requests/${request.id}`);
     }
   };
 

@@ -15,7 +15,7 @@ interface ExtractedDataFormProps {
   requestId: string;
   docExtractedData: DocumentExtractedData;
   validationResults?: ValidationResult[];
-  onSaved?: (updatedDoc: Document) => void;
+  onSaved?: (updatedDoc: Document) => void | Promise<void>;
   isReadOnly?: boolean;
 }
 
@@ -122,6 +122,9 @@ export const ExtractedDataForm: React.FC<ExtractedDataFormProps> = ({
         docExtractedData.document_id || docExtractedData.id,
         correctedPayload
       );
+      if (onSaved) {
+        await onSaved(updatedDoc);
+      }
       setSaveSuccess(true);
       setDirtyFields(new Set());
       setOverrides({});
@@ -130,7 +133,6 @@ export const ExtractedDataForm: React.FC<ExtractedDataFormProps> = ({
         title: 'تم حفظ التعديلات بنجاح',
         description: 'تم تحديث البيانات المستخرجة للمستند وسيتم اعتمادها في الفحص.',
       });
-      if (onSaved) onSaved(updatedDoc);
     } catch (err: unknown) {
       const msg = err instanceof Error ? err.message : 'فشل في حفظ التعديلات';
       toast({
