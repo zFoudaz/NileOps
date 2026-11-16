@@ -36,28 +36,10 @@
 - Modify: `docker-compose.yml`
 - Test: `backend/tests/test_llm_factory.py`
 
-- [ ] **Step 1: Write failing test for LLM factory**
-  - Test `get_llm(provider="ollama", model_name="qwen3.5:4b", base_url="...")` returns `ChatOllama` instance.
-  - Test `get_ocr_llm()` and `get_parser_llm()` read configuration defaults.
-  - Test unsupported provider raises `ValueError("Unsupported LLM provider: ...")`.
-
-- [ ] **Step 2: Update configuration in `app/config.py`**
-  - Add:
-    ```python
-    OCR_PROVIDER: str = "ollama"
-    OCR_MODEL: str = "qwen3.5:4b"
-    PARSER_PROVIDER: str = "ollama"
-    PARSER_MODEL: str = "qwen3.5:4b"
-    ```
-  - Update `docker-compose.yml` environment variables.
-
-- [ ] **Step 3: Implement `app/services/llm/factory.py`**
-  - Implement `create_chat_model(provider: str, model_name: str, **kwargs) -> BaseChatModel`.
-  - Implement helper functions `get_ocr_llm()` and `get_parser_llm()`.
-  - Support lazy loading / dynamic provider dispatch (Ollama default; pluggable slots for OpenAI, etc.).
-
-- [ ] **Step 4: Run tests and verify**
-  - Run `pytest tests/test_llm_factory.py`.
+- [x] **Step 1: Write failing test for LLM factory**
+- [x] **Step 2: Update configuration in `app/config.py`**
+- [x] **Step 3: Implement `app/services/llm/factory.py`**
+- [x] **Step 4: Run tests and verify**
 
 ---
 
