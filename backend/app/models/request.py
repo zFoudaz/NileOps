@@ -12,7 +12,7 @@ class Request(Base):
     __tablename__ = "requests"
 
     id = Column(UUID(as_uuid=True), primary_key=True, default=uuid.uuid4)
-    customer_id = Column(UUID(as_uuid=True), ForeignKey("users.id"), nullable=False)
+    customer_id = Column(UUID(as_uuid=True), ForeignKey("users.id"), nullable=False, index=True)
     request_type = Column(
         SAEnum(RequestType, name="request_type", values_callable=lambda x: [e.value for e in x]),
         nullable=False,
@@ -23,13 +23,14 @@ class Request(Base):
         SAEnum(RequestStatus, name="request_status", values_callable=lambda x: [e.value for e in x]),
         nullable=False,
         default=RequestStatus.PENDING_UPLOAD,
+        index=True,
     )
     auto_decision = Column(
         SAEnum(AutoDecision, name="auto_decision", values_callable=lambda x: [e.value for e in x]),
         nullable=True,
     )
     rejection_reason = Column(Text, nullable=True)
-    verified_by = Column(UUID(as_uuid=True), ForeignKey("users.id"), nullable=True)
+    verified_by = Column(UUID(as_uuid=True), ForeignKey("users.id"), nullable=True, index=True)
     verified_at = Column(DateTime(timezone=True), nullable=True)
     created_at = Column(
         DateTime(timezone=True),
