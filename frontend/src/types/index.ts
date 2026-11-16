@@ -125,6 +125,7 @@ export interface CorrectionPayload {
 }
 
 export interface VerifyPayload {
-  decision: 'approve' | 'reject';
+  decision: 'approved' | 'rejected' | 'approve' | 'reject';
   reason?: string;
+  notes?: string;
 }

@@ -11,8 +11,8 @@ import { NewRequestPage } from '@/pages/customer/NewRequestPage';
 import { UploadDocumentsPage } from '@/pages/customer/UploadDocumentsPage';
 import { ReviewDataPage } from '@/pages/customer/ReviewDataPage';
 import { RequestStatusPage } from '@/pages/customer/RequestStatusPage';
-import { EmployeeDashboard } from '@/pages/employee/EmployeeDashboard';
-import { EmployeeRequestDetail } from '@/pages/employee/EmployeeRequestDetail';
+import { EmployeeDashboardPage } from '@/pages/employee/DashboardPage';
+import { EmployeeRequestDetailPage } from '@/pages/employee/RequestDetailPage';
 import { Loader2 } from 'lucide-react';
 
 const RootRedirect: React.FC = () => {
@@ -133,7 +133,7 @@ export const App: React.FC = () => {
                 path="/employee"
                 element={
                   <ProtectedRoute requiredRole="employee">
-                    <EmployeeDashboard />
+                    <EmployeeDashboardPage />
                   </ProtectedRoute>
                 }
               />
@@ -141,7 +141,7 @@ export const App: React.FC = () => {
                 path="/employee/requests/:id"
                 element={
                   <ProtectedRoute requiredRole="employee">
-                    <EmployeeRequestDetail />
+                    <EmployeeRequestDetailPage />
                   </ProtectedRoute>
                 }
               />

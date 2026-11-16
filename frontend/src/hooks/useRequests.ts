@@ -216,6 +216,87 @@ export function useRequests() {
     []
   );
 
+  const getEmployeeRequests = useCallback(
+    async (params?: {
+      status?: string;
+      sub_type?: string;
+      start_date?: string;
+      end_date?: string;
+      page?: number;
+      limit?: number;
+    }): Promise<BankRequest[]> => {
+      setIsLoading(true);
+      setError(null);
+      try {
+        const response = await api.get<BankRequest[]>('/employee/requests', {
+          params,
+        });
+        return response.data;
+      } catch (err: unknown) {
+        const message =
+          (err as { response?: { data?: { detail?: string } } })?.response?.data
+            ?.detail || 'فشل في جلب طلبات المراجعة';
+        setError(message);
+        throw new Error(message);
+      } finally {
+        setIsLoading(false);
+      }
+    },
+    []
+  );
+
+  const getEmployeeRequestDetail = useCallback(
+    async (id: string): Promise<BankRequest> => {
+      setIsLoading(true);
+      setError(null);
+      try {
+        const response = await api.get<BankRequest>(`/employee/requests/${id}`);
+        return response.data;
+      } catch (err: unknown) {
+        const message =
+          (err as { response?: { data?: { detail?: string } } })?.response?.data
+            ?.detail || 'فشل في جلب تفاصيل الطلب';
+        setError(message);
+        throw new Error(message);
+      } finally {
+        setIsLoading(false);
+      }
+    },
+    []
+  );
+
+  const verifyRequest = useCallback(
+    async (
+      id: string,
+      payload: { decision: 'approved' | 'rejected'; reason?: string; notes?: string }
+    ): Promise<BankRequest> => {
+      setIsLoading(true);
+      setError(null);
+      try {
+        const response = await api.post<BankRequest>(
+          `/employee/requests/${id}/verify`,
+          payload
+        );
+        return response.data;
+      } catch (err: unknown) {
+        const axiosErr = err as {
+          response?: { status?: number; data?: { detail?: string } };
+        };
+        const message =
+          axiosErr.response?.data?.detail || 'فشل في إتمام عملية التدقيق والتحقق';
+        setError(message);
+        const customError = new Error(message) as Error & { status?: number };
+        if (axiosErr.response?.status) {
+          customError.status = axiosErr.response.status;
+        }
+        throw customError;
+      } finally {
+        setIsLoading(false);
+      }
+    },
+    []
+  );
+
   return {
     isLoading,
     error,
@@ -227,5 +308,8 @@ export function useRequests() {
     getExtractedData,
     submitCorrection,
     submitForReview,
+    getEmployeeRequests,
+    getEmployeeRequestDetail,
+    verifyRequest,
   };
 }
