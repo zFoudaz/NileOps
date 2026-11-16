@@ -1,6 +1,7 @@
 import base64
 import json
 import logging
+import mimetypes
 from pathlib import Path
 from typing import Any, Dict, Optional
 from uuid import UUID
@@ -69,44 +70,37 @@ def extract_document_fields(image_path: str, document_type: DocumentType) -> Dic
 
     path = Path(image_path)
     if not path.is_file():
-        logger.warning("Image file does not exist: %s", image_path)
-        return {}
+        logger.error("Image file does not exist: %s", image_path)
+        raise FileNotFoundError(f"Image file does not exist: {image_path}")
 
-    try:
-        image_bytes = path.read_bytes()
-        b64_image = base64.b64encode(image_bytes).decode("utf-8")
-    except Exception as e:
-        logger.error("Error reading image file %s: %s", image_path, e)
-        return {}
+    image_bytes = path.read_bytes()
+    b64_image = base64.b64encode(image_bytes).decode("utf-8")
+    mime_type = mimetypes.guess_type(image_path)[0] or "image/jpeg"
 
-    try:
-        llm = ChatOllama(
-            base_url=settings.OLLAMA_BASE_URL,
-            model=settings.OLLAMA_MODEL,
+    llm = ChatOllama(
+        base_url=settings.OLLAMA_BASE_URL,
+        model=settings.OLLAMA_MODEL,
+    )
+    message = HumanMessage(
+        content=[
+            {"type": "text", "text": prompt},
+            {
+                "type": "image_url",
+                "image_url": f"data:{mime_type};base64,{b64_image}",
+            },
+        ]
+    )
+    response = llm.invoke([message])
+    content = response.content
+    if isinstance(content, list):
+        content_str = "".join(
+            part if isinstance(part, str) else part.get("text", "")
+            for part in content
         )
-        message = HumanMessage(
-            content=[
-                {"type": "text", "text": prompt},
-                {
-                    "type": "image_url",
-                    "image_url": f"data:image/jpeg;base64,{b64_image}",
-                },
-            ]
-        )
-        response = llm.invoke([message])
-        content = response.content
-        if isinstance(content, list):
-            content_str = "".join(
-                part if isinstance(part, str) else part.get("text", "")
-                for part in content
-            )
-        else:
-            content_str = str(content)
+    else:
+        content_str = str(content)
 
-        return _parse_llm_json(content_str)
-    except Exception as e:
-        logger.error("OCR extraction failed for %s (%s): %s", image_path, document_type, e)
-        return {}
+    return _parse_llm_json(content_str)
 
 
 def process_request_documents(request_id: UUID, db: Optional[Session] = None) -> None:

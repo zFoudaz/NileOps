@@ -312,3 +312,106 @@ def test_process_endpoint_not_found_for_other_user(client, db_session):
     )
     assert resp.status_code == 404
     assert resp.json()["detail"] == "Request not found"
+
+
+def test_process_endpoint_invalid_status(client, db_session):
+    """POST /api/requests/{id}/process fails with 400 if request is not in PENDING_UPLOAD status."""
+    token = get_customer_auth(client, email="invalid_status_user@example.com")
+    headers = {"Authorization": f"Bearer {token}"}
+
+    create_resp = client.post(
+        "/api/requests/",
+        json={"request_type": "account_opening", "sub_type": "youth"},
+        headers=headers,
+    )
+    assert create_resp.status_code == 201
+    req_id = create_resp.json()["id"]
+
+    # Add required documents
+    doc1 = Document(
+        request_id=uuid.UUID(req_id),
+        document_type=DocumentType.NATIONAL_ID_FRONT,
+        file_path="uploads/fake_front.jpg",
+        ocr_required=True,
+        ocr_completed=False,
+    )
+    doc2 = Document(
+        request_id=uuid.UUID(req_id),
+        document_type=DocumentType.NATIONAL_ID_BACK,
+        file_path="uploads/fake_back.jpg",
+        ocr_required=True,
+        ocr_completed=False,
+    )
+    db_session.add_all([doc1, doc2])
+
+    # Manually transition request to PROCESSING
+    req = db_session.query(Request).filter(Request.id == uuid.UUID(req_id)).first()
+    req.status = RequestStatus.PROCESSING
+    db_session.commit()
+
+    resp = client.post(f"/api/requests/{req_id}/process", headers=headers)
+    assert resp.status_code == 400
+    assert resp.json()["detail"] == f"Request cannot be processed in '{RequestStatus.PROCESSING}' status"
+
+
+def test_process_preserves_uncompleted_on_connection_error(db_session, tmp_path):
+    """When LLM or file extraction raises connection/system error, doc.ocr_completed remains False."""
+    user = User(
+        name="Conn Error User",
+        email="conn_err@example.com",
+        password_hash="fakehash",
+        role=UserRole.CUSTOMER,
+    )
+    db_session.add(user)
+    db_session.commit()
+
+    req = Request(
+        customer_id=user.id,
+        sub_type="youth",
+        status=RequestStatus.PENDING_UPLOAD,
+    )
+    db_session.add(req)
+    db_session.commit()
+
+    img = tmp_path / "front.jpg"
+    img.write_bytes(b"dummy")
+
+    doc = Document(
+        request_id=req.id,
+        document_type=DocumentType.NATIONAL_ID_FRONT,
+        file_path=str(img),
+        ocr_required=True,
+        ocr_completed=False,
+    )
+    db_session.add(doc)
+    db_session.commit()
+
+    with patch("app.services.ocr.extractor.extract_document_fields", side_effect=ConnectionError("Ollama connection failed")):
+        process_request_documents(req.id, db=db_session)
+
+        db_session.refresh(doc)
+        assert doc.ocr_completed is False
+        assert doc.extracted_data is None
+
+
+def test_extract_dynamic_mime_type(tmp_path):
+    """Verify MIME type is dynamically guessed from file extension (e.g. image/png)."""
+    dummy_png = tmp_path / "sample.png"
+    dummy_png.write_bytes(b"png data")
+
+    mock_response = MagicMock()
+    mock_response.content = json.dumps({"name": "Test User", "national_id": "29501011234567", "address": "Cairo"})
+
+    with patch("app.services.ocr.extractor.ChatOllama") as mock_chat_cls:
+        mock_instance = MagicMock()
+        mock_chat_cls.return_value = mock_instance
+        mock_instance.invoke.return_value = mock_response
+
+        extract_document_fields(str(dummy_png), DocumentType.NATIONAL_ID_FRONT)
+
+        # Inspect the message sent to invoke
+        call_args = mock_instance.invoke.call_args[0][0]
+        human_message = call_args[0]
+        image_part = human_message.content[1]
+        assert image_part["image_url"].startswith("data:image/png;base64,")
+

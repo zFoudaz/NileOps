@@ -108,7 +108,14 @@ def process_request(
             detail="Request not found",
         )
 
-    # 2. Verify all required documents for req.sub_type are uploaded
+    # 2. Verify request status is pending_upload
+    if req.status != RequestStatus.PENDING_UPLOAD:
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail=f"Request cannot be processed in '{req.status}' status",
+        )
+
+    # 3. Verify all required documents for req.sub_type are uploaded
     required_docs = get_required_documents(req.sub_type)
     uploaded_doc_types = {doc.document_type for doc in req.documents}
     missing_docs = [doc_type for doc_type in required_docs if doc_type not in uploaded_doc_types]
