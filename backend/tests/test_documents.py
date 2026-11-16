@@ -10,10 +10,11 @@ from app.models.enums import DocumentType
 
 @pytest.fixture(autouse=True)
 def cleanup_uploads():
-    yield
     upload_path = Path("uploads")
+    existing_items = set(upload_path.iterdir()) if upload_path.exists() else set()
+    yield
     if upload_path.exists():
-        for item in upload_path.iterdir():
+        for item in set(upload_path.iterdir()) - existing_items:
             if item.is_dir():
                 shutil.rmtree(item, ignore_errors=True)
             else:

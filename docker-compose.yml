@@ -34,9 +34,12 @@ services:
       - OLLAMA_MODEL=${OLLAMA_MODEL:-qwen3.5:4b}
       - OCR_PROVIDER=${OCR_PROVIDER:-ollama}
       - OCR_MODEL=${OCR_MODEL:-qwen3.5:4b}
+      - OCR_BASE_URL=${OCR_BASE_URL:-}
       - PARSER_PROVIDER=${PARSER_PROVIDER:-ollama}
       - PARSER_MODEL=${PARSER_MODEL:-qwen3.5:4b}
+      - PARSER_BASE_URL=${PARSER_BASE_URL:-}
       - OPENAI_API_KEY=${OPENAI_API_KEY:-}
+      - OPENAI_BASE_URL=${OPENAI_BASE_URL:-}
       - UPLOAD_DIR=uploads
       - DEFAULT_EMPLOYEE_NAME=${DEFAULT_EMPLOYEE_NAME:-أحمد فؤاد}
       - DEFAULT_EMPLOYEE_EMAIL=${DEFAULT_EMPLOYEE_EMAIL:-employee@nileops.com}
@@ -44,7 +47,7 @@ services:
     ports:
       - "8000:8000"
     volumes:
-      - backend_uploads:/app/uploads
+      - ./backend/uploads:/app/uploads
       - ./sample_documents:/app/sample_documents:ro
     depends_on:
       postgres:
@@ -65,6 +68,4 @@ services:
 
 volumes:
   postgres_data:
-    driver: local
-  backend_uploads:
     driver: local

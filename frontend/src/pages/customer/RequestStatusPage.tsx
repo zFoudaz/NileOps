@@ -1,7 +1,6 @@
 import React, { useEffect, useState, useCallback } from 'react';
 import { useParams, Link } from 'react-router-dom';
 import {
-  FileText,
   CheckCircle2,
   XCircle,
   Clock,
@@ -46,6 +45,7 @@ export const RequestStatusPage: React.FC = () => {
   const [request, setRequest] = useState<BankRequest | null>(null);
   const [loading, setLoading] = useState<boolean>(true);
   const [previewImage, setPreviewImage] = useState<string | null>(null);
+  const [failedImages, setFailedImages] = useState<Record<string, boolean>>({});
 
   const fetchDetails = useCallback(async () => {
     if (!id) return;
@@ -551,7 +551,7 @@ export const RequestStatusPage: React.FC = () => {
                         )}
                       </div>
 
-                      {imgUrl ? (
+                      {imgUrl && !failedImages[doc.id] ? (
                         <div
                           className="relative h-28 w-full rounded-lg bg-slate-100 border border-slate-200 overflow-hidden cursor-pointer group"
                           onClick={() => setPreviewImage(imgUrl)}
@@ -559,6 +559,7 @@ export const RequestStatusPage: React.FC = () => {
                           <img
                             src={imgUrl}
                             alt={doc.document_type}
+                            onError={() => setFailedImages((prev) => ({ ...prev, [doc.id]: true }))}
                             className="h-full w-full object-cover transition duration-200 group-hover:scale-105"
                           />
                           <div className="absolute inset-0 bg-black/30 opacity-0 group-hover:opacity-100 transition-opacity flex items-center justify-center text-white text-xs gap-1">
@@ -567,8 +568,9 @@ export const RequestStatusPage: React.FC = () => {
                           </div>
                         </div>
                       ) : (
-                        <div className="h-28 w-full rounded-lg bg-slate-100 border border-slate-200 flex items-center justify-center text-slate-400">
-                          <FileText className="h-8 w-8" />
+                        <div className="h-28 w-full rounded-lg bg-slate-100 border border-slate-200 flex flex-col items-center justify-center text-slate-400 p-2 text-center">
+                          <AlertCircle className="h-6 w-6 text-amber-500 mb-1" />
+                          <span className="text-[11px] text-slate-600 font-medium">تعذر تحميل المعاينة</span>
                         </div>
                       )}
                     </div>

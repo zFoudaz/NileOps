@@ -19,7 +19,7 @@ def create_chat_model(provider: str, model_name: str, **kwargs: Any) -> BaseChat
     provider_clean = (provider or "").strip().lower()
 
     if provider_clean == "ollama":
-        base_url = kwargs.pop("base_url", settings.OLLAMA_BASE_URL)
+        base_url = kwargs.pop("base_url", None) or settings.OLLAMA_BASE_URL
         return ChatOllama(base_url=base_url, model=model_name, **kwargs)
     elif provider_clean == "openai":
         try:
@@ -29,10 +29,16 @@ def create_chat_model(provider: str, model_name: str, **kwargs: Any) -> BaseChat
                 "OpenAI provider requested but `langchain-openai` is not installed. "
                 "Install it using `pip install langchain-openai`."
             ) from exc
-        api_key = kwargs.pop("api_key", settings.OPENAI_API_KEY) or None
+        api_key = kwargs.pop("api_key", None) or settings.OPENAI_API_KEY or None
+        base_url = kwargs.pop("base_url", None) or settings.OPENAI_BASE_URL or None
+
+        init_kwargs = dict(kwargs)
         if api_key:
-            return ChatOpenAI(model=model_name, api_key=api_key, **kwargs)
-        return ChatOpenAI(model=model_name, **kwargs)
+            init_kwargs["api_key"] = api_key
+        if base_url:
+            init_kwargs["base_url"] = base_url
+
+        return ChatOpenAI(model=model_name, **init_kwargs)
     else:
         raise ValueError(f"Unsupported LLM provider: {provider}")
 
@@ -42,9 +48,15 @@ get_llm = create_chat_model
 
 def get_ocr_llm(**kwargs: Any) -> BaseChatModel:
     """Instantiate the chat model configured for OCR processing."""
+    base_url = kwargs.pop("base_url", None) or settings.OCR_BASE_URL or None
+    if base_url:
+        kwargs["base_url"] = base_url
     return create_chat_model(settings.OCR_PROVIDER, settings.OCR_MODEL, **kwargs)
 
 
 def get_parser_llm(**kwargs: Any) -> BaseChatModel:
     """Instantiate the chat model configured for document parsing."""
+    base_url = kwargs.pop("base_url", None) or settings.PARSER_BASE_URL or None
+    if base_url:
+        kwargs["base_url"] = base_url
     return create_chat_model(settings.PARSER_PROVIDER, settings.PARSER_MODEL, **kwargs)
