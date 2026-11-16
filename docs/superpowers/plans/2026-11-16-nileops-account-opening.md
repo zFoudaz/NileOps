@@ -369,43 +369,43 @@ git commit -m "feat: frontend setup with auth, routing, and layout"
 - Consumes: Backend request/document APIs, `useAuth()`, `api` client, shadcn components
 - Produces: Complete customer-facing UI
 
-- [ ] **Step 1: Create `useRequests` hook**
+- [x] **Step 1: Create `useRequests` hook**
 
 Custom hook wrapping API calls: `createRequest(type, subType)`, `getMyRequests()`, `getRequest(id)`, `uploadDocument(requestId, docType, file)`, `processDocuments(requestId)`, `getExtractedData(requestId)`, `submitCorrection(requestId, docId, fields)`, `submitForReview(requestId)`.
 
-- [ ] **Step 2: Build DashboardPage**
+- [x] **Step 2: Build DashboardPage**
 
 List of customer's requests as cards. Each `RequestCard` shows: request type, account type (Arabic labels), status badge (color-coded), created date. Click navigates to status page. "طلب جديد" button at top.
 
-- [ ] **Step 3: Build NewRequestPage**
+- [x] **Step 3: Build NewRequestPage**
 
 Step 1: Select request type (only "فتح حساب" for now). Step 2: Select account type (أفراد / شباب / قصّر) with Arabic descriptions. On submit → `createRequest()` → redirect to upload page.
 
-- [ ] **Step 4: Build FileUpload component**
+- [x] **Step 4: Build FileUpload component**
 
 Drag-and-drop zone with click-to-browse fallback. Shows preview thumbnail after upload. Accepts images only. Shows upload progress.
 
-- [ ] **Step 5: Build UploadDocumentsPage**
+- [x] **Step 5: Build UploadDocumentsPage**
 
 Shows checklist of required documents for the selected account type (Arabic labels). Each item has a `FileUpload` component. Tracks which documents are uploaded. "معالجة المستندات" button enabled when all required docs uploaded → calls `processDocuments()` → shows processing spinner → polls request status → redirects to review page when done.
 
-- [ ] **Step 6: Build ExtractedDataForm component**
+- [x] **Step 6: Build ExtractedDataForm component**
 
 Renders extracted fields as labeled text inputs. Receives field definitions with `editable` flag. `expiry_date` shown as read-only. Highlighted border on fields that had validation mismatches. "حفظ التعديلات" button calls `submitCorrection()`.
 
-- [ ] **Step 7: Build ReviewDataPage**
+- [x] **Step 7: Build ReviewDataPage**
 
 Fetches extracted data for all documents. Groups by document (tabs or sections). Shows `ExtractedDataForm` for each OCR'd document. Shows decoded fields (DOB, gender, governorate from ID number) as read-only info. Shows `ValidationBadge` for each validation rule. Shows auto-decision result. "إرسال للمراجعة" button → `submitForReview()` → redirect to status page.
 
-- [ ] **Step 8: Build RequestStatusPage**
+- [x] **Step 8: Build RequestStatusPage**
 
 Shows request details: type, account type, status with timeline/stepper visualization, auto-decision, employee decision (if reviewed), rejection reason (if rejected). Shows document images. Links back to review page if status allows corrections.
 
-- [ ] **Step 9: Verify end-to-end**
+- [x] **Step 9: Verify end-to-end**
 
 Full flow: register → new request → select أفراد → upload 4 documents → process → review extracted data → correct a field → submit → see status as pending_review.
 
-- [ ] **Step 10: Commit**
+- [x] **Step 10: Commit**
 
 ```bash
 git add -A
