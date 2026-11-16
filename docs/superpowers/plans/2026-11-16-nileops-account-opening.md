@@ -289,56 +289,13 @@ git commit -m "feat: OCR service with LangChain + Ollama and async processing"
 - Consumes: `decode_national_id()`, `Document` model (extracted_data), `Request` model (sub_type), `ValidationResult` model
 - Produces: `validate_request(request_id, db) -> list[ValidationResult]`, `compute_auto_decision(validations) -> AutoDecision | None`
 
-- [ ] **Step 1: Write failing tests**
-
-```python
-# cross_validator tests
-def test_cross_validate_id_expiry_valid()       # future date → passed=True
-def test_cross_validate_id_expiry_expired()     # past date → passed=False
-def test_cross_validate_age_individual_valid()  # age 25 + individual → passed=True
-def test_cross_validate_age_individual_young()  # age 18 + individual → passed=False
-def test_cross_validate_age_youth_valid()       # age 17 + youth → passed=True
-def test_cross_validate_age_minor_valid()       # age 10 + minor → passed=True
-def test_cross_validate_guardian_id_match()     # father_national_id matches guardian's → passed=True
-def test_cross_validate_guardian_id_mismatch()  # different IDs → passed=False
-
-# auto-decision tests
-def test_auto_approve_all_pass()     # all validations pass → auto_approved
-def test_auto_reject_expired_id()    # expiry fails → auto_rejected
-def test_auto_reject_wrong_age()     # age fails → auto_rejected
-```
-
-- [ ] **Step 2: Run tests to verify they fail**
-
-Run: `cd backend && pytest tests/test_validation.py -v`
-Expected: FAIL
-
-- [ ] **Step 3: Implement `cross_validator.py`**
-
-`validate_request(request_id, db)`:
-1. Load request + documents with extracted_data
-2. If national_id: decode national_id number → get DOB, gender, governorate. Check expiry date. Check age vs account type.
-3. If minor account: compare father_national_id from birth certificate with national_id from guardian's front ID.
-4. Store each check as a `ValidationResult` row.
-5. Return the list.
-
-- [ ] **Step 4: Implement `business_rules.py`**
-
-`compute_auto_decision(validations: list[ValidationResult]) -> AutoDecision | None`:
-- If any validation with `rule_name` in `["id_expiry", "age_check"]` has `passed=False` → `auto_rejected`
-- If all validations pass → `auto_approved`
-- Otherwise → None
-
-- [ ] **Step 5: Wire validation into OCR completion**
-
-In `process_request_documents()`, after all OCR is done: call `validate_request()`, then `compute_auto_decision()`, update request's `auto_decision` and `status` to `pending_review`.
-
-- [ ] **Step 6: Run tests**
-
-Run: `cd backend && pytest tests/test_validation.py -v`
-Expected: 11 PASS
-
-- [ ] **Step 7: Commit**
+- [x] **Step 1: Write failing tests**
+- [x] **Step 2: Run tests to verify they fail**
+- [x] **Step 3: Implement `cross_validator.py`**
+- [x] **Step 4: Implement `business_rules.py`**
+- [x] **Step 5: Wire validation into OCR completion**
+- [x] **Step 6: Run tests**
+- [x] **Step 7: Commit**
 
 ```bash
 git add -A
