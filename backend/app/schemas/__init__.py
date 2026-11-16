@@ -5,6 +5,12 @@ from app.schemas.user import (
     Token,
     TokenData,
 )
+from app.schemas.document import DocumentResponse
+from app.schemas.request import (
+    RequestCreate,
+    RequestResponse,
+    ValidationResultResponse,
+)
 
 __all__ = [
     "UserRegister",
@@ -12,4 +18,8 @@ __all__ = [
     "UserResponse",
     "Token",
     "TokenData",
+    "DocumentResponse",
+    "RequestCreate",
+    "RequestResponse",
+    "ValidationResultResponse",
 ]

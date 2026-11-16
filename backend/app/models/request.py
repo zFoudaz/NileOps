@@ -50,3 +50,8 @@ class Request(Base):
     verifier = relationship("User", foreign_keys=[verified_by], back_populates="verified_requests")
     documents = relationship("Document", back_populates="request", cascade="all, delete-orphan")
     validation_results = relationship("ValidationResult", back_populates="request", cascade="all, delete-orphan")
+
+    @property
+    def required_documents(self):
+        from app.services.request_types.account_opening import get_required_documents
+        return get_required_documents(self.sub_type)
