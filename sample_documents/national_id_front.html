@@ -1,0 +1,322 @@
+<!DOCTYPE html>
+<html lang="ar" dir="rtl">
+<head>
+  <meta charset="UTF-8">
+  <title>بطاقة الرقم القومي - الوجه</title>
+  <style>
+    @import url('https://fonts.googleapis.com/css2?family=Cairo:wght@400;600;700;800;900&display=swap');
+
+    * {
+      margin: 0;
+      padding: 0;
+      box-sizing: border-box;
+      font-family: 'Cairo', 'Segoe UI', Tahoma, sans-serif;
+    }
+
+    body {
+      background: #f0f2f5;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      min-height: 100vh;
+      padding: 20px;
+    }
+
+    /* Standard ID Card Dimension: ~1000px x 630px */
+    .id-card {
+      width: 950px;
+      height: 590px;
+      background: linear-gradient(135deg, #e4edf5 0%, #d2e4f0 35%, #ebf3f8 70%, #d8e8f2 100%);
+      border: 2px solid #b2c9d9;
+      border-radius: 28px;
+      position: relative;
+      overflow: hidden;
+      box-shadow: 0 15px 35px rgba(0, 0, 0, 0.15);
+      padding: 30px 40px;
+      display: flex;
+      flex-direction: column;
+      justify-content: space-between;
+    }
+
+    /* Subtle security guilloche pattern overlay */
+    .id-card::before {
+      content: "";
+      position: absolute;
+      inset: 0;
+      background: 
+        radial-gradient(circle at 70% 30%, rgba(200, 225, 240, 0.6) 0%, transparent 60%),
+        repeating-radial-gradient(circle at 50% 50%, rgba(180, 210, 230, 0.25) 0, rgba(180, 210, 230, 0.25) 3px, transparent 3px, transparent 12px);
+      pointer-events: none;
+      z-index: 1;
+    }
+
+    /* Watermark Egyptian Eagle */
+    .eagle-watermark {
+      position: absolute;
+      top: 45%;
+      left: 48%;
+      transform: translate(-50%, -50%);
+      width: 320px;
+      height: 320px;
+      opacity: 0.12;
+      pointer-events: none;
+      z-index: 2;
+    }
+
+    /* Header */
+    .header {
+      position: relative;
+      z-index: 5;
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      border-bottom: 2px solid rgba(30, 60, 90, 0.18);
+      padding-bottom: 12px;
+    }
+
+    .header-titles {
+      text-align: right;
+    }
+
+    .header-titles h1 {
+      font-size: 26px;
+      font-weight: 900;
+      color: #1a365d;
+      letter-spacing: 0.5px;
+    }
+
+    .header-titles h2 {
+      font-size: 17px;
+      font-weight: 700;
+      color: #2b6cb0;
+      margin-top: 2px;
+    }
+
+    .header-titles h3 {
+      font-size: 14px;
+      font-weight: 600;
+      color: #4a5568;
+    }
+
+    .card-title-badge {
+      text-align: center;
+      background: rgba(255, 255, 255, 0.85);
+      border: 1.5px solid #2b6cb0;
+      padding: 6px 20px;
+      border-radius: 50px;
+      box-shadow: 0 2px 8px rgba(0, 0, 0, 0.05);
+    }
+
+    .card-title-badge span {
+      font-size: 20px;
+      font-weight: 900;
+      color: #1a365d;
+    }
+
+    .header-eagle {
+      width: 75px;
+      height: 75px;
+    }
+
+    /* Main Body Layout */
+    .card-body {
+      position: relative;
+      z-index: 5;
+      display: flex;
+      gap: 35px;
+      align-items: center;
+      margin-top: 15px;
+      flex: 1;
+    }
+
+    /* Photo Container on the Left */
+    .photo-container {
+      width: 190px;
+      height: 245px;
+      background: #ffffff;
+      border: 3px solid #1a365d;
+      border-radius: 16px;
+      overflow: hidden;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+      position: relative;
+      box-shadow: 0 4px 12px rgba(0,0,0,0.12);
+      flex-shrink: 0;
+    }
+
+    .photo-inner {
+      width: 100%;
+      height: 100%;
+      background: linear-gradient(180deg, #dce6ed 0%, #b8cad6 100%);
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+      position: relative;
+    }
+
+    .avatar-head {
+      width: 75px;
+      height: 90px;
+      background: #4a5568;
+      border-radius: 50% 50% 45% 45%;
+      margin-top: 25px;
+    }
+
+    .avatar-body {
+      width: 140px;
+      height: 100px;
+      background: #1a202c;
+      border-radius: 50% 50% 0 0;
+      margin-top: -15px;
+    }
+
+    .hologram-seal {
+      position: absolute;
+      bottom: 8px;
+      right: 8px;
+      width: 45px;
+      height: 45px;
+      border-radius: 50%;
+      background: radial-gradient(circle, #f6e05e 20%, #d69e2e 60%, #b7791f 100%);
+      opacity: 0.85;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-size: 8px;
+      font-weight: 900;
+      color: #744210;
+      border: 1px dashed #744210;
+    }
+
+    /* Text Data Area on the Right */
+    .data-fields {
+      flex: 1;
+      display: flex;
+      flex-direction: column;
+      gap: 16px;
+      text-align: right;
+    }
+
+    .field-row {
+      display: flex;
+      flex-direction: column;
+      gap: 3px;
+    }
+
+    .field-label {
+      font-size: 14px;
+      font-weight: 700;
+      color: #4a5568;
+    }
+
+    .field-value {
+      font-size: 23px;
+      font-weight: 800;
+      color: #0f172a;
+      letter-spacing: 0.3px;
+    }
+
+    .field-value.name {
+      font-size: 27px;
+      font-weight: 900;
+      color: #0f172a;
+    }
+
+    /* National ID Number Footer */
+    .footer-id {
+      position: relative;
+      z-index: 5;
+      background: rgba(255, 255, 255, 0.95);
+      border: 2px solid #1e3a8a;
+      border-radius: 14px;
+      padding: 10px 25px;
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      box-shadow: 0 4px 10px rgba(0, 0, 0, 0.05);
+      margin-top: 10px;
+    }
+
+    .footer-label {
+      font-size: 18px;
+      font-weight: 800;
+      color: #1e3a8a;
+    }
+
+    .id-number {
+      font-family: 'Cairo', 'Courier New', monospace;
+      font-size: 34px;
+      font-weight: 900;
+      color: #0f172a;
+      letter-spacing: 6px;
+      direction: ltr;
+    }
+  </style>
+</head>
+<body>
+
+  <div class="id-card">
+    <!-- Egyptian Eagle Watermark SVG -->
+    <svg class="eagle-watermark" viewBox="0 0 100 100" fill="#1e3a8a">
+      <path d="M50 10 C45 25 35 30 20 35 C30 45 35 60 30 85 C42 75 48 65 50 55 C52 65 58 75 70 85 C65 60 70 45 80 35 C65 30 55 25 50 10 Z"/>
+      <circle cx="50" cy="40" r="12" fill="#1e3a8a"/>
+    </svg>
+
+    <!-- Header Section -->
+    <div class="header">
+      <div class="header-titles">
+        <h1>جمهورية مصر العربية</h1>
+        <h2>وزارة الداخلية</h2>
+        <h3>قطاع مصلحة الأحوال المدنية</h3>
+      </div>
+
+      <div class="card-title-badge">
+        <span>بطاقة تحقيق شخصية</span>
+      </div>
+
+      <!-- Eagle Crest Header -->
+      <svg class="header-eagle" viewBox="0 0 100 100">
+        <path d="M50 15 C46 28 38 32 25 36 C33 45 38 58 34 80 C44 72 48 63 50 54 C52 63 56 72 66 80 C62 58 67 45 75 36 C62 32 54 28 50 15 Z" fill="#b45309"/>
+        <rect x="42" y="45" width="16" height="22" rx="3" fill="#dc2626"/>
+        <rect x="42" y="52" width="16" height="8" fill="#ffffff"/>
+        <rect x="42" y="60" width="16" height="7" fill="#000000"/>
+      </svg>
+    </div>
+
+    <!-- Card Body: Photo and Fields -->
+    <div class="card-body">
+      <!-- Personal Photo -->
+      <div class="photo-container">
+        <div class="photo-inner">
+          <div class="avatar-head"></div>
+          <div class="avatar-body"></div>
+          <div class="hologram-seal">نسر مصر</div>
+        </div>
+      </div>
+
+      <!-- Extracted Fields -->
+      <div class="data-fields">
+        <div class="field-row">
+          <span class="field-label">الاسم:</span>
+          <span class="field-value name">أحمد محمد محمود علي</span>
+        </div>
+
+        <div class="field-row">
+          <span class="field-label">العنوان:</span>
+          <span class="field-value">١٥ شارع النصر، المعادي، القاهرة</span>
+        </div>
+      </div>
+    </div>
+
+    <!-- Bottom National ID Bar -->
+    <div class="footer-id">
+      <span class="footer-label">الرقم القومي:</span>
+      <span class="id-number">29810150101235</span>
+    </div>
+  </div>
+
+</body>
+</html>

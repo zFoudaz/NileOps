@@ -1,0 +1,338 @@
+<!DOCTYPE html>
+<html lang="ar" dir="rtl">
+<head>
+  <meta charset="UTF-8">
+  <title>إيصال مرافق - فاتورة كهرباء</title>
+  <style>
+    @import url('https://fonts.googleapis.com/css2?family=Cairo:wght@400;600;700;800;900&display=swap');
+
+    * {
+      margin: 0;
+      padding: 0;
+      box-sizing: border-box;
+      font-family: 'Cairo', 'Segoe UI', Tahoma, sans-serif;
+    }
+
+    body {
+      background: #f0f2f5;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      min-height: 100vh;
+      padding: 20px;
+    }
+
+    .bill-card {
+      width: 820px;
+      background: #ffffff;
+      border: 2px solid #cbd5e1;
+      border-radius: 18px;
+      padding: 35px 40px;
+      box-shadow: 0 12px 30px rgba(0, 0, 0, 0.1);
+      position: relative;
+      overflow: hidden;
+    }
+
+    /* Electricity company header */
+    .bill-header {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      border-bottom: 3px double #0284c7;
+      padding-bottom: 16px;
+    }
+
+    .header-logo {
+      display: flex;
+      align-items: center;
+      gap: 15px;
+    }
+
+    .logo-badge {
+      width: 60px;
+      height: 60px;
+      background: #0284c7;
+      border-radius: 12px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      color: #ffffff;
+      font-size: 28px;
+    }
+
+    .header-text h2 {
+      font-size: 20px;
+      font-weight: 900;
+      color: #0f172a;
+    }
+
+    .header-text h3 {
+      font-size: 15px;
+      font-weight: 700;
+      color: #0369a1;
+    }
+
+    .invoice-title {
+      text-align: left;
+    }
+
+    .invoice-title h1 {
+      font-size: 24px;
+      font-weight: 900;
+      color: #0284c7;
+    }
+
+    .invoice-title p {
+      font-size: 14px;
+      font-weight: 600;
+      color: #64748b;
+    }
+
+    /* Customer details box */
+    .subscriber-box {
+      margin-top: 25px;
+      background: #f8fafc;
+      border: 1.5px solid #e2e8f0;
+      border-radius: 14px;
+      padding: 20px;
+    }
+
+    .subscriber-box h4 {
+      font-size: 16px;
+      font-weight: 800;
+      color: #0369a1;
+      margin-bottom: 15px;
+      border-bottom: 1px solid #cbd5e1;
+      padding-bottom: 8px;
+    }
+
+    .grid-fields {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      row-gap: 14px;
+      column-gap: 20px;
+    }
+
+    .grid-row-full {
+      grid-column: 1 / -1;
+    }
+
+    .field-item {
+      display: flex;
+      flex-direction: column;
+      gap: 3px;
+    }
+
+    .field-item .label {
+      font-size: 14px;
+      font-weight: 700;
+      color: #475569;
+    }
+
+    .field-item .val {
+      font-size: 20px;
+      font-weight: 800;
+      color: #0f172a;
+    }
+
+    .val.primary-name {
+      font-size: 24px;
+      font-weight: 900;
+      color: #0f172a;
+      background: #e0f2fe;
+      padding: 4px 12px;
+      border-radius: 8px;
+      display: inline-block;
+      width: fit-content;
+    }
+
+    .val.primary-address {
+      font-size: 21px;
+      font-weight: 800;
+      color: #0f172a;
+      background: #f1f5f9;
+      padding: 4px 12px;
+      border-radius: 8px;
+    }
+
+    /* Meter Readings Table */
+    .readings-table {
+      width: 100%;
+      margin-top: 25px;
+      border-collapse: collapse;
+      text-align: center;
+    }
+
+    .readings-table th {
+      background: #0284c7;
+      color: #ffffff;
+      font-weight: 800;
+      font-size: 15px;
+      padding: 10px;
+      border: 1px solid #0284c7;
+    }
+
+    .readings-table td {
+      border: 1px solid #cbd5e1;
+      padding: 10px;
+      font-size: 16px;
+      font-weight: 700;
+      color: #1e293b;
+    }
+
+    /* Footer & Paid Stamp */
+    .bill-footer {
+      margin-top: 30px;
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      padding-top: 15px;
+      border-top: 2px dashed #cbd5e1;
+    }
+
+    .total-due {
+      background: #f0fdf4;
+      border: 2px solid #16a34a;
+      border-radius: 12px;
+      padding: 12px 25px;
+      display: flex;
+      align-items: center;
+      gap: 15px;
+    }
+
+    .total-due .txt {
+      font-size: 17px;
+      font-weight: 800;
+      color: #166534;
+    }
+
+    .total-due .amt {
+      font-size: 26px;
+      font-weight: 900;
+      color: #15803d;
+    }
+
+    /* Stamp */
+    .paid-stamp {
+      border: 4px double #dc2626;
+      border-radius: 50%;
+      width: 115px;
+      height: 115px;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+      color: #dc2626;
+      transform: rotate(-12deg);
+      opacity: 0.88;
+      box-shadow: 0 0 4px rgba(220, 38, 38, 0.3);
+    }
+
+    .paid-stamp .stamp-title {
+      font-size: 18px;
+      font-weight: 900;
+    }
+
+    .paid-stamp .stamp-sub {
+      font-size: 11px;
+      font-weight: 800;
+    }
+  </style>
+</head>
+<body>
+
+  <div class="bill-card">
+    <!-- Header -->
+    <div class="bill-header">
+      <div class="header-logo">
+        <div class="logo-badge">⚡</div>
+        <div class="header-text">
+          <h2>الشركة القابضة لكهرباء مصر</h2>
+          <h3>شركة جنوب القاهرة لتوزيع الكهرباء</h3>
+        </div>
+      </div>
+
+      <div class="invoice-title">
+        <h1>فاتورة كهرباء</h1>
+        <p>إيصال سداد إلكتروني - سكني</p>
+      </div>
+    </div>
+
+    <!-- Subscriber Info -->
+    <div class="subscriber-box">
+      <h4>بيانات المشترك ومحل السكن</h4>
+
+      <div class="grid-fields">
+        <div class="field-item grid-row-full">
+          <span class="label">اسم المشترك / صاحب العقار:</span>
+          <span class="val primary-name">أحمد محمد محمود علي</span>
+        </div>
+
+        <div class="field-row grid-row-full">
+          <div class="field-item">
+            <span class="label">العنوان بالتفصيل:</span>
+            <span class="val primary-address">١٥ شارع النصر، المعادي، القاهرة</span>
+          </div>
+        </div>
+
+        <div class="field-item">
+          <span class="label">رقم الحساب:</span>
+          <span class="val">01-4458-9921</span>
+        </div>
+
+        <div class="field-item">
+          <span class="label">رقم العداد:</span>
+          <span class="val">MTR-8820194</span>
+        </div>
+
+        <div class="field-item">
+          <span class="label">فترة الاستهلاك:</span>
+          <span class="val">أكتوبر ٢٠٢٦</span>
+        </div>
+
+        <div class="field-item">
+          <span class="label">الفرع التابع له:</span>
+          <span class="val">إدارة كهرباء المعادي</span>
+        </div>
+      </div>
+    </div>
+
+    <!-- Table -->
+    <table class="readings-table">
+      <thead>
+        <tr>
+          <th>القراءة الحالية</th>
+          <th>القراءة السابقة</th>
+          <th>كمية الاستهلاك (ك.و.س)</th>
+          <th>قيمة الاستهلاك</th>
+          <th>رسوم النظافة والدمغة</th>
+        </tr>
+      </thead>
+      <tbody>
+        <tr>
+          <td>١٨٤٥٠</td>
+          <td>١٧٩٩٠</td>
+          <td>٤٦٠</td>
+          <td>٤٥٠.٠٠ ج.م</td>
+          <td>٣٥.٥٠ ج.م</td>
+        </tr>
+      </tbody>
+    </table>
+
+    <!-- Footer -->
+    <div class="bill-footer">
+      <div class="total-due">
+        <span class="txt">المبلغ الإجمالي المسدد:</span>
+        <span class="amt">٤٨٥.٥٠ جنيه مصري</span>
+      </div>
+
+      <div class="paid-stamp">
+        <span class="stamp-sub">جنوب القاهرة</span>
+        <span class="stamp-title">مدفوع بالكامل</span>
+        <span class="stamp-sub">خزينة ٢٠٢٦/١٠</span>
+      </div>
+    </div>
+  </div>
+
+</body>
+</html>

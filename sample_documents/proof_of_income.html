@@ -1,0 +1,324 @@
+<!DOCTYPE html>
+<html lang="ar" dir="rtl">
+<head>
+  <meta charset="UTF-8">
+  <title>شهادة مفردات مرتب وإثبات دخل</title>
+  <style>
+    @import url('https://fonts.googleapis.com/css2?family=Cairo:wght@400;600;700;800;900&display=swap');
+
+    * {
+      margin: 0;
+      padding: 0;
+      box-sizing: border-box;
+      font-family: 'Cairo', 'Segoe UI', Tahoma, sans-serif;
+    }
+
+    body {
+      background: #f0f2f5;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      min-height: 100vh;
+      padding: 20px;
+    }
+
+    .letterhead {
+      width: 840px;
+      background: #ffffff;
+      border: 2px solid #cbd5e1;
+      border-radius: 16px;
+      padding: 45px 50px;
+      box-shadow: 0 12px 30px rgba(0, 0, 0, 0.1);
+      position: relative;
+    }
+
+    /* Company Header */
+    .company-header {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      border-bottom: 3px solid #0f766e;
+      padding-bottom: 20px;
+    }
+
+    .brand {
+      display: flex;
+      align-items: center;
+      gap: 15px;
+    }
+
+    .brand-icon {
+      width: 55px;
+      height: 55px;
+      background: #0f766e;
+      border-radius: 12px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      color: #ffffff;
+      font-size: 26px;
+      font-weight: 900;
+    }
+
+    .brand-names h2 {
+      font-size: 20px;
+      font-weight: 900;
+      color: #0f172a;
+    }
+
+    .brand-names p {
+      font-size: 13px;
+      font-weight: 700;
+      color: #0f766e;
+    }
+
+    .legal-meta {
+      text-align: left;
+      font-size: 13px;
+      color: #64748b;
+      font-weight: 600;
+      line-height: 1.5;
+    }
+
+    /* Document Title */
+    .doc-title-section {
+      text-align: center;
+      margin: 30px 0 20px 0;
+    }
+
+    .doc-title-section h1 {
+      font-size: 25px;
+      font-weight: 900;
+      color: #0f766e;
+      display: inline-block;
+      border-bottom: 2px solid #0f766e;
+      padding-bottom: 6px;
+    }
+
+    .doc-date {
+      font-size: 14px;
+      font-weight: 700;
+      color: #475569;
+      margin-top: 6px;
+    }
+
+    /* Recipient */
+    .recipient {
+      font-size: 17px;
+      font-weight: 800;
+      color: #1e293b;
+      margin-bottom: 18px;
+    }
+
+    /* Body Text */
+    .body-text {
+      font-size: 16px;
+      line-height: 1.9;
+      color: #1e293b;
+      font-weight: 600;
+      text-align: justify;
+      margin-bottom: 25px;
+    }
+
+    .highlight-name {
+      font-weight: 900;
+      color: #0f766e;
+      font-size: 18px;
+    }
+
+    .highlight-id {
+      font-family: 'Cairo', monospace;
+      font-weight: 800;
+      color: #0f172a;
+      direction: ltr;
+      display: inline-block;
+    }
+
+    /* Salary Table */
+    .salary-table {
+      width: 100%;
+      border-collapse: collapse;
+      margin-bottom: 30px;
+    }
+
+    .salary-table th {
+      background: #f1f5f9;
+      border: 1.5px solid #cbd5e1;
+      padding: 12px;
+      font-size: 15px;
+      font-weight: 800;
+      color: #334155;
+      text-align: right;
+    }
+
+    .salary-table td {
+      border: 1.5px solid #cbd5e1;
+      padding: 12px;
+      font-size: 16px;
+      font-weight: 700;
+      color: #0f172a;
+      text-align: right;
+    }
+
+    .net-salary-row td {
+      background: #f0fdf4;
+      color: #15803d;
+      font-size: 19px;
+      font-weight: 900;
+    }
+
+    /* Signatures & Stamp */
+    .closing-section {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      margin-top: 40px;
+      padding-top: 20px;
+    }
+
+    .sign-box {
+      text-align: center;
+    }
+
+    .sign-box p {
+      font-size: 15px;
+      font-weight: 700;
+      color: #334155;
+    }
+
+    .sign-line {
+      margin-top: 40px;
+      font-weight: 800;
+      color: #0f172a;
+      font-size: 16px;
+    }
+
+    /* Corporate Stamp */
+    .corp-stamp {
+      border: 3.5px solid #1d4ed8;
+      border-radius: 50%;
+      width: 135px;
+      height: 135px;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+      color: #1d4ed8;
+      transform: rotate(8deg);
+      opacity: 0.85;
+      box-shadow: 0 0 5px rgba(29, 78, 216, 0.25);
+    }
+
+    .corp-stamp .top-t {
+      font-size: 11px;
+      font-weight: 800;
+    }
+
+    .corp-stamp .mid-t {
+      font-size: 14px;
+      font-weight: 900;
+      border-top: 1px solid #1d4ed8;
+      border-bottom: 1px solid #1d4ed8;
+      padding: 2px 6px;
+      margin: 3px 0;
+    }
+
+    .corp-stamp .bot-t {
+      font-size: 10px;
+      font-weight: 700;
+    }
+  </style>
+</head>
+<body>
+
+  <div class="letterhead">
+    <!-- Header -->
+    <div class="company-header">
+      <div class="brand">
+        <div class="brand-icon">N</div>
+        <div class="brand-names">
+          <h2>شركة النيل للحلول الرقمية المتطورة</h2>
+          <p>Nile Digital Solutions S.A.E</p>
+        </div>
+      </div>
+
+      <div class="legal-meta">
+        س.ت: 489201 القاهرة<br>
+        ب.ض: 512-889-100<br>
+        المعادي، القاهرة، مصر
+      </div>
+    </div>
+
+    <!-- Title -->
+    <div class="doc-title-section">
+      <h1>شهادة مفردات مرتب وإثبات دخل</h1>
+      <div class="doc-date">التاريخ: 2026/10/20</div>
+    </div>
+
+    <div class="recipient">
+      إلى: إدارة العمليات المصرفية وفتح الحسابات - بنك نايل أوبس
+    </div>
+
+    <!-- Statement -->
+    <div class="body-text">
+      تشهد إدارة الموارد البشرية بشركة النيل للحلول الرقمية بأن السيد / 
+      <span class="highlight-name">أحمد محمد محمود علي</span>، 
+      مصري الجنسية، ويحمل بطاقة رقم قومي: 
+      <span class="highlight-id">29810150101235</span>، 
+      يعمل طرفنا بوظيفة: <strong>مهندس برمجيات أول (Senior Software Engineer)</strong> 
+      منذ تاريخ 01/03/2021 وحتى تاريخه بعقد عمل دائم وكامل، وبيان دخله الشهري كالآتي:
+    </div>
+
+    <!-- Salary Table -->
+    <table class="salary-table">
+      <thead>
+        <tr>
+          <th>البند</th>
+          <th>القيمة الشهرية</th>
+        </tr>
+      </thead>
+      <tbody>
+        <tr>
+          <td>الراتب الأساسي</td>
+          <td>25,000 ج.م</td>
+        </tr>
+        <tr>
+          <td>بدلات وحوافز ثابتة</td>
+          <td>10,000 ج.م</td>
+        </tr>
+        <tr>
+          <td><strong>إجمالي الدخل الشهري</strong></td>
+          <td><strong>35,000 ج.م</strong></td>
+        </tr>
+        <tr>
+          <td>الاستقطاعات القانونية (تأمينات وضرائب)</td>
+          <td>5,600 ج.م</td>
+        </tr>
+        <tr class="net-salary-row">
+          <td>صافي الراتب الشهري المستحق الصرف</td>
+          <td>29,400 ج.م (تسعة وعشرون ألف وأربعمائة جنيه مصري)</td>
+        </tr>
+      </tbody>
+    </table>
+
+    <div style="font-size: 14px; color: #64748b; font-weight: 600;">
+      * أُعطيت هذه الشهادة للموظف بناءً على طلبه لتقديمها إلى البنك لفتح حساب مصرفي دون أدنى مسؤولية مالية على الشركة تجاه الغير.
+    </div>
+
+    <!-- Signature & Stamp -->
+    <div class="closing-section">
+      <div class="sign-box">
+        <p>مدير الموارد البشرية</p>
+        <div class="sign-line">أ. تامر عبد الرحمن</div>
+      </div>
+
+      <div class="corp-stamp">
+        <span class="top-t">شركة النيل للحلول</span>
+        <span class="mid-t">الموارد البشرية - معتمد</span>
+        <span class="bot-t">C.R: 489201</span>
+      </div>
+    </div>
+  </div>
+
+</body>
+</html>
