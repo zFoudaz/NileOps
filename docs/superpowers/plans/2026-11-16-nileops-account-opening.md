@@ -315,46 +315,12 @@ git commit -m "feat: cross-validation, age/expiry checks, and auto-decision logi
 - Consumes: `get_current_user`, `require_role`, `Request`, `Document`, `ValidationResult` models
 - Produces: Customer endpoints for corrections and submission. Employee endpoints for listing, reviewing, and verifying requests.
 
-- [ ] **Step 1: Add correction endpoints to requests route**
-
-- `GET /api/requests/{id}/extracted-data` — returns all documents' extracted_data + corrected_data + validation results. Marks expiry_date as non-editable.
-- `PATCH /api/requests/{id}/corrections` — body: `{document_id: UUID, corrected_fields: dict}`. Validates expiry_date not in corrected_fields. Stores in document's `corrected_data`.
-- `POST /api/requests/{id}/submit` — sets status to `pending_review`. Validates status is not `processing`.
-
-- [ ] **Step 2: Create employee routes**
-
-- `GET /api/employee/requests` — list all requests with status `pending_review` (filterable by sub_type, status, date range). Paginated.
-- `GET /api/employee/requests/{id}` — full detail: extracted_data, corrected_data, validation results, document image URLs, auto_decision.
-- `POST /api/employee/requests/{id}/verify` — body: `{decision: "approved"|"rejected", reason?: string}`. Sets status, records `verified_by` and `verified_at`. Returns 409 if already verified.
-
-- [ ] **Step 3: Write correction tests**
-
-```python
-def test_get_extracted_data()                  # returns fields with editable flags
-def test_submit_correction()                   # PATCH → corrected_data updated
-def test_correction_rejects_expiry_date()      # try to correct expiry_date → 400
-def test_submit_request_for_review()           # POST /submit → status=pending_review
-def test_submit_already_processing()           # submit while processing → 400
-```
-
-- [ ] **Step 4: Write employee tests**
-
-```python
-def test_employee_list_requests()              # GET → returns pending requests
-def test_employee_list_filter_by_type()        # filter by sub_type → correct results
-def test_employee_get_request_detail()         # GET detail → includes all data + images
-def test_employee_approve_request()            # POST verify approved → status=approved, verified_by set
-def test_employee_reject_with_reason()         # POST verify rejected → reason stored
-def test_employee_verify_already_verified()    # Review Focus #4: verify again → 409
-def test_customer_cannot_access_employee()     # customer hits employee endpoint → 403
-```
-
-- [ ] **Step 5: Run tests**
-
-Run: `cd backend && pytest tests/test_corrections.py tests/test_employee.py -v`
-Expected: 12 PASS
-
-- [ ] **Step 6: Commit**
+- [x] **Step 1: Add correction endpoints to requests route**
+- [x] **Step 2: Create employee routes**
+- [x] **Step 3: Write correction tests**
+- [x] **Step 4: Write employee tests**
+- [x] **Step 5: Run tests**
+- [x] **Step 6: Commit**
 
 ```bash
 git add -A
