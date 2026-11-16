@@ -3,6 +3,11 @@ services:
     image: postgres:16-alpine
     container_name: nileops-postgres
     restart: unless-stopped
+    env_file:
+      - path: .env
+        required: false
+      - path: backend/.env
+        required: false
     environment:
       POSTGRES_USER: ${POSTGRES_USER:-postgres}
       POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-postgres}
@@ -25,11 +30,16 @@ services:
     restart: unless-stopped
     extra_hosts:
       - "host.docker.internal:host-gateway"
+    env_file:
+      - path: .env
+        required: false
+      - path: backend/.env
+        required: false
     environment:
       - DATABASE_URL=postgresql://${POSTGRES_USER:-postgres}:${POSTGRES_PASSWORD:-postgres}@postgres:5432/${POSTGRES_DB:-nileops}
       - SECRET_KEY=${SECRET_KEY:-6a879336edb20ad0a6030f29f0fb25fe62b50120efc7eede3070a95d345295ea}
-      - ALGORITHM=HS256
-      - ACCESS_TOKEN_EXPIRE_MINUTES=1440
+      - ALGORITHM=${ALGORITHM:-HS256}
+      - ACCESS_TOKEN_EXPIRE_MINUTES=${ACCESS_TOKEN_EXPIRE_MINUTES:-1440}
       - OLLAMA_BASE_URL=${OLLAMA_BASE_URL:-http://host.docker.internal:11434}
       - OLLAMA_MODEL=${OLLAMA_MODEL:-qwen3.5:4b}
       - OCR_PROVIDER=${OCR_PROVIDER:-ollama}
@@ -58,11 +68,14 @@ services:
       context: ./frontend
       dockerfile: Dockerfile
       args:
-        - VITE_API_URL=/api
+        - VITE_API_URL=${VITE_API_URL:-/api}
     container_name: nileops-frontend
     restart: unless-stopped
+    env_file:
+      - path: .env
+        required: false
     ports:
-      - "5173:80"
+      - "${FRONTEND_PORT:-5173}:80"
     depends_on:
       - backend
 
