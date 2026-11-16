@@ -214,68 +214,14 @@ git commit -m "feat: JWT auth with customer registration and employee seeding"
 - Consumes: `Request`, `Document` models, `get_current_user`, `require_role("customer")`
 - Produces: `RequestCreate(request_type, sub_type)`, `RequestResponse(id, status, sub_type, documents, ...)`, `REQUIRED_DOCUMENTS: dict[AccountType, list[DocumentType]]` (from account_opening module), `save_upload(file, request_id) -> file_path`
 
-- [ ] **Step 1: Define required documents config in `account_opening.py`**
-
-```python
-REQUIRED_DOCUMENTS = {
-    AccountType.individual: [
-        DocumentType.national_id_front, DocumentType.national_id_back,
-        DocumentType.proof_of_residence, DocumentType.proof_of_income,
-    ],
-    AccountType.youth: [
-        DocumentType.national_id_front, DocumentType.national_id_back,
-    ],
-    AccountType.minor: [
-        DocumentType.birth_certificate,
-        DocumentType.guardian_national_id_front, DocumentType.guardian_national_id_back,
-    ],
-}
-
-OCR_DOCUMENTS = {  # documents that need OCR (excludes proof_of_income)
-    ...
-}
-```
-
-- [ ] **Step 2: Create `backend/app/utils/file_storage.py`**
-
-`save_upload(file: UploadFile, request_id: UUID) -> str` — saves to `uploads/{request_id}/{document_type}_{uuid}.{ext}`, returns relative path. Validates file is an image (check content type).
-
-- [ ] **Step 3: Create request schemas and routes**
-
-- `POST /api/requests/` — body: `{request_type, sub_type}`, creates request with status=pending_upload, returns request with its required document list
-- `GET /api/requests/` — list current customer's requests
-- `GET /api/requests/{id}` — get single request with documents and validation results
-
-- [ ] **Step 4: Create document upload route**
-
-- `POST /api/requests/{id}/documents` — multipart upload, fields: `document_type` + `file`. Validates: request belongs to customer, document_type is in required list for this account type, file is an image. Saves file, creates Document record.
-
-- [ ] **Step 5: Write request tests**
-
-```python
-def test_create_request()                  # POST → 201, status=pending_upload
-def test_create_request_invalid_type()     # invalid sub_type → 422
-def test_list_my_requests()                # GET list → only my requests
-def test_get_request_detail()              # GET by id → includes documents list
-def test_get_other_customer_request()      # GET another customer's → 404
-```
-
-- [ ] **Step 6: Write document upload tests**
-
-```python
-def test_upload_document()                 # upload image → 201, file saved
-def test_upload_wrong_document_type()      # type not in required list → 400
-def test_upload_non_image()                # upload .txt → 400
-def test_upload_to_other_request()         # not my request → 404
-def test_upload_corrupt_file()             # Review Focus #3: file with image mimetype but corrupt content → 400
-```
-
-- [ ] **Step 7: Run tests**
-
-Run: `cd backend && pytest tests/test_requests.py tests/test_documents.py -v`
-Expected: 9 PASS
-
-- [ ] **Step 8: Commit**
+- [x] **Step 1: Define required documents config in `account_opening.py`**
+- [x] **Step 2: Create `backend/app/utils/file_storage.py`**
+- [x] **Step 3: Create request schemas and routes**
+- [x] **Step 4: Create document upload route**
+- [x] **Step 5: Write request tests**
+- [x] **Step 6: Write document upload tests**
+- [x] **Step 7: Run tests**
+- [x] **Step 8: Commit**
 
 ```bash
 git add -A
