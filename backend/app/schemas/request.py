@@ -23,6 +23,14 @@ class RequestCreate(BaseModel):
     sub_type: AccountType
 
 
+class ProcessResponse(BaseModel):
+    message: str
+    request_id: uuid.UUID
+    status: RequestStatus
+
+    model_config = ConfigDict(from_attributes=True)
+
+
 class RequestResponse(BaseModel):
     id: uuid.UUID
     customer_id: uuid.UUID
