@@ -4,13 +4,13 @@ import {
   ZoomOut,
   RotateCw,
   Maximize2,
-  Minimize2,
   RotateCcw,
   Image as ImageIcon,
   FileX,
   AlertCircle,
   CheckCircle2,
   ExternalLink,
+  X,
 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
@@ -247,31 +247,31 @@ export const DocumentViewer: React.FC<DocumentViewerProps> = ({
             <span>تدوير</span>
           </Button>
 
-          <Button
-            type="button"
-            variant={isFullscreen ? 'default' : 'outline'}
-            size="sm"
-            onClick={() => setIsFullscreen(!isFullscreen)}
-            title={isFullscreen ? 'تصغير الشاشة (Esc)' : 'ملء الشاشة'}
-            className={cn(
-              'h-8 px-2.5 text-xs gap-1',
-              isFullscreen
-                ? 'bg-emerald-600 hover:bg-emerald-700 text-white'
-                : 'border-slate-200 bg-white hover:bg-slate-100 text-slate-700'
-            )}
-          >
-            {isFullscreen ? (
-              <>
-                <Minimize2 className="h-3.5 w-3.5" />
-                <span>تصغير</span>
-              </>
-            ) : (
-              <>
-                <Maximize2 className="h-3.5 w-3.5" />
-                <span>ملء الشاشة</span>
-              </>
-            )}
-          </Button>
+          {isFullscreen ? (
+            <Button
+              type="button"
+              variant="default"
+              size="sm"
+              onClick={() => setIsFullscreen(false)}
+              title="خروج من ملء الشاشة (Esc)"
+              className="h-8 px-3 text-xs gap-1.5 bg-rose-600 hover:bg-rose-700 text-white font-medium shadow-xs transition"
+            >
+              <X className="h-3.5 w-3.5" />
+              <span>خروج من ملء الشاشة</span>
+            </Button>
+          ) : (
+            <Button
+              type="button"
+              variant="outline"
+              size="sm"
+              onClick={() => setIsFullscreen(true)}
+              title="ملء الشاشة"
+              className="h-8 px-2.5 text-xs gap-1 border-slate-200 bg-white hover:bg-slate-100 text-slate-700"
+            >
+              <Maximize2 className="h-3.5 w-3.5" />
+              <span>ملء الشاشة</span>
+            </Button>
+          )}
         </div>
       </div>
 
@@ -289,6 +289,18 @@ export const DocumentViewer: React.FC<DocumentViewerProps> = ({
           zoom > 1 ? (isDragging ? 'cursor-grabbing' : 'cursor-grab') : 'cursor-default'
         )}
       >
+        {/* Floating exit button for quick access during fullscreen */}
+        {isFullscreen && (
+          <button
+            type="button"
+            onClick={() => setIsFullscreen(false)}
+            title="خروج من ملء الشاشة (Esc)"
+            className="absolute top-4 left-4 z-20 flex items-center gap-1.5 bg-slate-900/90 hover:bg-rose-600 text-slate-200 hover:text-white px-3 py-1.5 rounded-full border border-slate-700 shadow-lg backdrop-blur-xs transition cursor-pointer text-xs font-medium"
+          >
+            <X className="h-4 w-4" />
+            <span>خروج (Esc)</span>
+          </button>
+        )}
         {!currentDoc || !resolvedUrl ? (
           <div className="flex flex-col items-center justify-center p-8 text-center text-slate-400">
             <FileX className="h-12 w-12 stroke-1 mb-2 text-slate-300" />
@@ -342,7 +354,10 @@ export const DocumentViewer: React.FC<DocumentViewerProps> = ({
                   setImageErrors((prev) => ({ ...prev, [currentDoc.id]: true }));
                 }
               }}
-              className="max-h-[500px] max-w-full w-auto object-contain rounded-lg shadow-md pointer-events-none"
+              className={cn(
+                'max-w-full w-auto object-contain rounded-lg shadow-md pointer-events-none transition-all',
+                isFullscreen ? 'max-h-[82vh]' : 'max-h-[500px]'
+              )}
             />
           </div>
         )}
