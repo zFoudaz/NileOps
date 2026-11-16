@@ -1,7 +1,10 @@
+import math
 import os
+import random
 from PIL import Image, ImageDraw, ImageFont
 import arabic_reshaper
 from bidi.algorithm import get_display
+
 
 def ar(text: str) -> str:
     """Helper to reshape Arabic text for Pillow rendering."""
@@ -10,6 +13,7 @@ def ar(text: str) -> str:
     reshaped = arabic_reshaper.reshape(text)
     return get_display(reshaped)
 
+
 # Fonts
 FONT_REGULAR = "C:/Windows/Fonts/arial.ttf"
 FONT_BOLD = "C:/Windows/Fonts/arialbd.ttf"
@@ -17,101 +21,350 @@ FONT_TAHOMA = "C:/Windows/Fonts/tahoma.ttf"
 FONT_TAHOMA_BOLD = "C:/Windows/Fonts/tahomabd.ttf"
 FONT_MONO = "C:/Windows/Fonts/courbd.ttf"
 
-def get_font(path, size):
+
+def get_font(path: str, size: int):
     if os.path.exists(path):
         return ImageFont.truetype(path, size)
     return ImageFont.load_default()
 
+
 os.makedirs("sample_documents", exist_ok=True)
 
+
 # -------------------------------------------------------------
-# 1. National ID - Front
+# Drawing Helpers: Eagle Crest, Watermark & Hologram Seal
+# -------------------------------------------------------------
+
+def draw_egyptian_eagle(draw: ImageDraw.Draw, cx: int, cy: int, scale: float = 1.0, is_gold: bool = True):
+    """Draw a detailed stylized Eagle of Saladin (Egyptian National Crest)."""
+    if is_gold:
+        gold_main = (190, 145, 35)
+        gold_dark = (140, 95, 20)
+        gold_light = (240, 200, 75)
+    else:
+        # Subtle watermark colors: pale cyan-grey
+        gold_main = (212, 230, 240)
+        gold_dark = (195, 218, 232)
+        gold_light = (222, 238, 246)
+
+    s = scale
+
+    # Symmetrical wings
+    wing_left = [
+        (cx - int(38 * s), cy - int(25 * s)),
+        (cx - int(22 * s), cy - int(45 * s)),
+        (cx - int(8 * s), cy - int(35 * s)),
+        (cx - int(12 * s), cy - int(10 * s)),
+        (cx - int(28 * s), cy + int(15 * s)),
+        (cx - int(34 * s), cy + int(5 * s)),
+    ]
+    wing_right = [
+        (cx + int(38 * s), cy - int(25 * s)),
+        (cx + int(22 * s), cy - int(45 * s)),
+        (cx + int(8 * s), cy - int(35 * s)),
+        (cx + int(12 * s), cy - int(10 * s)),
+        (cx + int(28 * s), cy + int(15 * s)),
+        (cx + int(34 * s), cy + int(5 * s)),
+    ]
+    draw.polygon(wing_left, fill=gold_main, outline=gold_dark)
+    draw.polygon(wing_right, fill=gold_main, outline=gold_dark)
+
+    # Feathers detail
+    for offset in range(3):
+        dx = int((14 + offset * 7) * s)
+        draw.line(
+            [(cx - dx, cy - int(20 * s)), (cx - dx - int(6 * s), cy - int(5 * s))],
+            fill=gold_light,
+            width=max(1, int(2 * s)),
+        )
+        draw.line(
+            [(cx + dx, cy - int(20 * s)), (cx + dx + int(6 * s), cy - int(5 * s))],
+            fill=gold_light,
+            width=max(1, int(2 * s)),
+        )
+
+    # Tail feathers
+    tail = [
+        (cx - int(14 * s), cy + int(18 * s)),
+        (cx - int(10 * s), cy + int(38 * s)),
+        (cx + int(10 * s), cy + int(38 * s)),
+        (cx + int(14 * s), cy + int(18 * s)),
+    ]
+    draw.polygon(tail, fill=gold_main, outline=gold_dark)
+
+    # Head looking right (official Egyptian crest heraldry)
+    head = [
+        (cx - int(4 * s), cy - int(40 * s)),
+        (cx + int(5 * s), cy - int(48 * s)),
+        (cx + int(14 * s), cy - int(45 * s)),  # Beak tip
+        (cx + int(9 * s), cy - int(39 * s)),
+        (cx + int(4 * s), cy - int(34 * s)),
+        (cx - int(4 * s), cy - int(35 * s)),
+    ]
+    draw.polygon(head, fill=gold_light, outline=gold_dark)
+
+    # Chest / Egyptian Shield
+    sw = int(18 * s)
+    sh = int(24 * s)
+    sx = cx - sw // 2
+    sy = cy - sh // 2 + int(3 * s)
+
+    if is_gold:
+        draw.rectangle([sx - 1, sy - 1, sx + sw + 1, sy + sh + 1], fill=gold_dark)
+        stripe_h = sh // 3
+        draw.rectangle([sx, sy, sx + sw, sy + stripe_h], fill=(206, 17, 38))
+        draw.rectangle([sx, sy + stripe_h, sx + sw, sy + 2 * stripe_h], fill=(255, 255, 255))
+        draw.rectangle([sx, sy + 2 * stripe_h, sx + sw, sy + sh], fill=(15, 23, 42))
+    else:
+        # Subtle watermark shield
+        draw.rectangle([sx, sy, sx + sw, sy + sh], fill=(218, 234, 244), outline=gold_dark, width=1)
+
+    # Base Scroll
+    scroll = [
+        (cx - int(26 * s), cy + int(37 * s)),
+        (cx + int(26 * s), cy + int(37 * s)),
+        (cx + int(22 * s), cy + int(43 * s)),
+        (cx - int(22 * s), cy + int(43 * s)),
+    ]
+    draw.polygon(scroll, fill=gold_light, outline=gold_dark)
+
+
+def create_clipped_portrait(pw: int, ph: int) -> Image.Image:
+    """Create a cardholder portrait image cleanly clipped to photo boundaries."""
+    photo = Image.new("RGB", (pw, ph), color=(225, 235, 244))
+    draw = ImageDraw.Draw(photo)
+
+    # Studio background gradient
+    for y in range(ph):
+        ratio = y / ph
+        r = int(218 + (180 - 218) * ratio)
+        g = int(230 + (195 - 230) * ratio)
+        b = int(242 + (212 - 242) * ratio)
+        draw.line([(0, y), (pw, y)], fill=(r, g, b))
+
+    cx = pw // 2
+
+    # Suit shoulders
+    draw.ellipse([cx - 95, ph - 110, cx + 95, ph + 80], fill=(25, 33, 48))
+    # Suit collar / lapels
+    draw.polygon([(cx - 30, ph - 80), (cx - 50, ph - 30), (cx - 15, ph - 10)], fill=(18, 24, 38))
+    draw.polygon([(cx + 30, ph - 80), (cx + 50, ph - 30), (cx + 15, ph - 10)], fill=(18, 24, 38))
+
+    # White shirt
+    draw.polygon([(cx - 24, ph - 85), (cx + 24, ph - 85), (cx, ph - 25)], fill=(250, 250, 252))
+
+    # Burgundy Tie
+    draw.polygon([
+        (cx - 7, ph - 68),
+        (cx + 7, ph - 68),
+        (cx + 10, ph - 15),
+        (cx, ph),
+        (cx - 10, ph - 15),
+    ], fill=(150, 25, 35))
+
+    # Neck
+    draw.rectangle([cx - 18, 120, cx + 18, 165], fill=(215, 170, 135))
+    draw.rectangle([cx - 18, 145, cx + 18, 165], fill=(195, 150, 115))
+
+    # Ears
+    draw.ellipse([cx - 48, 75, cx - 36, 115], fill=(225, 180, 145))
+    draw.ellipse([cx + 36, 75, cx + 48, 115], fill=(225, 180, 145))
+
+    # Head shape
+    draw.ellipse([cx - 40, 35, cx + 40, 140], fill=(232, 188, 152))
+
+    # Hair (neat parted dark hair)
+    draw.ellipse([cx - 42, 22, cx + 42, 70], fill=(30, 25, 25))
+    draw.polygon([(cx - 42, 50), (cx - 45, 95), (cx - 38, 80)], fill=(30, 25, 25))
+    draw.polygon([(cx + 42, 50), (cx + 45, 95), (cx + 38, 80)], fill=(30, 25, 25))
+
+    # Eyebrows
+    draw.line([(cx - 28, 72), (cx - 10, 70)], fill=(40, 30, 30), width=3)
+    draw.line([(cx + 10, 70), (cx + 28, 72)], fill=(40, 30, 30), width=3)
+
+    # Eyes
+    draw.ellipse([cx - 26, 78, cx - 12, 88], fill=(255, 255, 255))
+    draw.ellipse([cx - 21, 80, cx - 15, 86], fill=(45, 35, 30))
+    draw.ellipse([cx + 12, 78, cx + 26, 88], fill=(255, 255, 255))
+    draw.ellipse([cx + 15, 80, cx + 21, 86], fill=(45, 35, 30))
+
+    # Nose
+    draw.line([(cx, 78), (cx - 3, 102)], fill=(195, 150, 120), width=2)
+    draw.arc([cx - 8, 98, cx + 8, 106], 0, 180, fill=(185, 140, 110), width=2)
+
+    # Mouth
+    draw.line([(cx - 14, 118), (cx + 14, 118)], fill=(175, 110, 95), width=3)
+
+    return photo
+
+
+def draw_hologram_seal(draw: ImageDraw.Draw, hx: int, hy: int, radius: int = 44):
+    """Draw circular golden holographic security seal with eagle."""
+    draw.ellipse([hx - radius, hy - radius, hx + radius, hy + radius], fill=(245, 205, 75), outline=(175, 125, 20), width=3)
+    draw.ellipse([hx - radius + 4, hy - radius + 4, hx + radius - 4, hy + radius - 4], outline=(255, 235, 140), width=1)
+    draw.ellipse([hx - radius + 8, hy - radius + 8, hx + radius - 8, hy + radius - 8], fill=(230, 180, 50), outline=(180, 130, 25), width=1)
+
+    for angle_deg in range(0, 360, 30):
+        rad = math.radians(angle_deg)
+        sx = hx + int((radius - 12) * math.cos(rad))
+        sy = hy + int((radius - 12) * math.sin(rad))
+        draw.ellipse([sx - 2, sy - 2, sx + 2, sy + 2], fill=(255, 250, 205))
+
+    draw_egyptian_eagle(draw, hx, hy + 2, scale=0.45, is_gold=True)
+
+
+# -------------------------------------------------------------
+# 1. National ID - Front (Egyptian National ID Card)
 # -------------------------------------------------------------
 def generate_id_front():
-    width, height = 1000, 620
-    img = Image.new("RGB", (width, height), color=(235, 243, 248))
+    width, height = 1000, 630
+
+    # Base card with soft pastel Egyptian ID gradient (cool cyan to pale sand)
+    img = Image.new("RGB", (width, height), color=(226, 240, 246))
     draw = ImageDraw.Draw(img)
 
-    # Card border
-    draw.rounded_rectangle([15, 15, width - 15, height - 15], radius=24, outline=(150, 185, 210), width=4)
-    draw.rounded_rectangle([25, 25, width - 25, height - 25], radius=20, outline=(190, 215, 230), width=2)
+    for y in range(height):
+        ratio = y / height
+        r = int(220 + 16 * ratio)
+        g = int(238 + 6 * ratio)
+        b = int(246 + 2 * ratio)
+        draw.line([(0, y), (width, y)], fill=(r, g, b))
 
-    # Security wavy lines pattern
-    for y in range(50, height - 50, 24):
-        draw.line([(30, y), (width - 30, y)], fill=(220, 235, 244), width=1)
-        draw.arc([100, y - 10, width - 100, y + 10], 0, 180, fill=(225, 238, 246), width=1)
+    # Outer security border
+    draw.rounded_rectangle([15, 15, width - 15, height - 15], radius=26, outline=(140, 178, 200), width=3)
+    draw.rounded_rectangle([22, 22, width - 22, height - 22], radius=22, outline=(185, 215, 230), width=1)
 
-    # Header
-    font_h1 = get_font(FONT_BOLD, 28)
-    font_h2 = get_font(FONT_BOLD, 20)
-    font_h3 = get_font(FONT_REGULAR, 17)
+    # Procedural Guilloche Security Waves
+    for curve_idx in range(14):
+        pts = []
+        for x in range(30, width - 30, 6):
+            y = 120 + curve_idx * 32 + math.sin(x * 0.018 + curve_idx * 0.6) * 16 + math.cos(x * 0.009) * 8
+            pts.append((x, int(y)))
+        draw.line(pts, fill=(205, 228, 240), width=1)
+
+    # Repeating micro-print watermark lines
+    micro_text = ar("جمهورية مصر العربية  *  قطاع مصلحة الأحوال المدنية  *  بطاقة تحقيق شخصية  *  " * 4)
+    font_micro = get_font(FONT_REGULAR, 10)
+    for my in range(165, 485, 48):
+        draw.text((width - 40, my), micro_text, font=font_micro, fill=(208, 228, 238), anchor="rt")
+
+    # Central soft Eagle Watermark (delicate watermark behind text)
+    draw_egyptian_eagle(draw, cx=530, cy=330, scale=3.0, is_gold=False)
+
+    # ---------------------------------------------------------
+    # Header Section
+    # ---------------------------------------------------------
+    font_h1 = get_font(FONT_BOLD, 26)
+    font_h2 = get_font(FONT_BOLD, 18)
+    font_h3 = get_font(FONT_REGULAR, 15)
     font_badge = get_font(FONT_BOLD, 22)
 
-    # Right header (Arabic title)
-    draw.text((950, 45), ar("جمهورية مصر العربية"), font=font_h1, fill=(20, 50, 85), anchor="rt")
-    draw.text((950, 85), ar("وزارة الداخلية"), font=font_h2, fill=(35, 90, 140), anchor="rt")
-    draw.text((950, 115), ar("قطاع مصلحة الأحوال المدنية"), font=font_h3, fill=(70, 95, 120), anchor="rt")
+    # Right side: Official Ministry of Interior Titles
+    draw.text((955, 40), ar("جمهورية مصر العربية"), font=font_h1, fill=(16, 46, 78), anchor="rt")
+    draw.text((955, 80), ar("وزارة الداخلية"), font=font_h2, fill=(28, 72, 115), anchor="rt")
+    draw.text((955, 110), ar("قطاع مصلحة الأحوال المدنية"), font=font_h3, fill=(60, 95, 125), anchor="rt")
 
-    # Center Badge
-    draw.rounded_rectangle([360, 50, 640, 105], radius=16, fill=(255, 255, 255), outline=(35, 90, 140), width=2)
-    draw.text((500, 77), ar("بطاقة تحقيق شخصية"), font=font_badge, fill=(20, 50, 85), anchor="mm")
+    # Center: "بطاقة تحقيق شخصية" Badge with ornamental double border
+    badge_rect = [340, 48, 640, 105]
+    draw.rounded_rectangle(badge_rect, radius=18, fill=(255, 255, 255), outline=(28, 72, 115), width=2)
+    draw.rounded_rectangle([badge_rect[0] + 3, badge_rect[1] + 3, badge_rect[2] - 3, badge_rect[3] - 3], radius=15, outline=(180, 210, 230), width=1)
+    draw.text((490, 76), ar("بطاقة تحقيق شخصية"), font=font_badge, fill=(16, 46, 78), anchor="mm")
 
-    # Eagle Emblem placeholder (left top)
-    draw.ellipse([60, 45, 140, 125], fill=(245, 240, 225), outline=(180, 130, 40), width=2)
-    draw.text((100, 85), ar("شعار\nالجمهورية"), font=get_font(FONT_BOLD, 14), fill=(160, 110, 30), anchor="mm", align="center")
+    # Left: Official Golden Eagle of Egypt (National Emblem)
+    draw.ellipse([50, 40, 135, 125], fill=(252, 248, 235), outline=(190, 145, 35), width=2)
+    draw_egyptian_eagle(draw, cx=92, cy=82, scale=1.1, is_gold=True)
 
-    # Header Divider
+    # Header Divider Line
     draw.line([(35, 145), (width - 35, 145)], fill=(160, 195, 220), width=2)
 
-    # Photo Box on the Left
-    photo_x, photo_y, photo_w, photo_h = 60, 180, 220, 280
-    draw.rectangle([photo_x, photo_y, photo_x + photo_w, photo_y + photo_h], fill=(255, 255, 255), outline=(20, 50, 85), width=3)
-    draw.rectangle([photo_x + 5, photo_y + 5, photo_x + photo_w - 5, photo_y + photo_h - 5], fill=(210, 225, 235))
-    
-    # Head & Shoulders silhouette
-    draw.ellipse([photo_x + 65, photo_y + 40, photo_x + 155, photo_y + 145], fill=(70, 85, 105))
-    draw.ellipse([photo_x + 30, photo_y + 130, photo_x + 190, photo_y + 270], fill=(30, 40, 55))
+    # ---------------------------------------------------------
+    # Left Side: Cardholder Photo (Cleanly Clipped) & Hologram
+    # ---------------------------------------------------------
+    photo_x, photo_y, photo_w, photo_h = 60, 175, 220, 280
+    portrait_img = create_clipped_portrait(photo_w, photo_h)
+    img.paste(portrait_img, (photo_x, photo_y))
 
-    # Hologram seal on photo
-    draw.ellipse([photo_x + photo_w - 60, photo_y + photo_h - 60, photo_x + photo_w - 10, photo_y + photo_h - 10], fill=(245, 215, 110), outline=(160, 110, 20), width=2)
-    draw.text((photo_x + photo_w - 35, photo_y + photo_h - 35), ar("نسر"), font=get_font(FONT_BOLD, 13), fill=(120, 75, 10), anchor="mm")
+    # Outer photo frame border
+    draw.rectangle([photo_x - 1, photo_y - 1, photo_x + photo_w + 1, photo_y + photo_h + 1], outline=(25, 55, 90), width=2)
 
-    # Data Fields on the Right
-    font_lbl = get_font(FONT_BOLD, 20)
-    font_val_name = get_font(FONT_BOLD, 30)
-    font_val = get_font(FONT_BOLD, 24)
+    # Hologram seal overlapping bottom-right corner of the photo
+    draw_hologram_seal(draw, hx=photo_x + photo_w - 28, hy=photo_y + photo_h - 28, radius=46)
 
-    # Name
-    draw.text((950, 200), ar("الاسم:"), font=font_lbl, fill=(70, 85, 105), anchor="rt")
-    draw.text((950, 240), ar("أحمد محمد محمود علي"), font=font_val_name, fill=(10, 25, 45), anchor="rt")
+    # ---------------------------------------------------------
+    # Right Side: Cardholder Data (Real Egyptian ID Layout)
+    # ---------------------------------------------------------
+    # Row 1: First Name: "محمد"
+    # Row 2: Father + Grandfather + Surname: "محمد أحمد حسنين"
+    # -> Father's name is "محمد", identical to son's name "محمد"!
+    font_first_name = get_font(FONT_TAHOMA_BOLD, 38)
+    font_rest_name = get_font(FONT_TAHOMA_BOLD, 32)
+    font_addr_label = get_font(FONT_BOLD, 15)
+    font_address = get_font(FONT_BOLD, 23)
 
-    # Address
-    draw.text((950, 310), ar("العنوان:"), font=font_lbl, fill=(70, 85, 105), anchor="rt")
-    draw.text((950, 350), ar("١٥ شارع النصر، المعادي، القاهرة"), font=font_val, fill=(15, 30, 50), anchor="rt")
+    # Row 1: First Name
+    draw.text((955, 185), ar("محمد"), font=font_first_name, fill=(10, 22, 40), anchor="rt")
 
-    # Bottom National ID Bar
-    draw.rounded_rectangle([45, 490, width - 45, 575], radius=16, fill=(255, 255, 255), outline=(20, 50, 85), width=3)
-    draw.text((920, 532), ar("الرقم القومي:"), font=get_font(FONT_BOLD, 24), fill=(20, 50, 85), anchor="rm")
-    
-    # 14 Digits in bold monospace
-    font_id = get_font(FONT_BOLD, 38)
-    draw.text((80, 532), "29810150101235", font=font_id, fill=(10, 20, 35), anchor="lm")
+    # Row 2: Rest of Name
+    draw.text((955, 248), ar("محمد أحمد حسنين"), font=font_rest_name, fill=(10, 22, 40), anchor="rt")
+
+    # Subtle separator / Address Section
+    draw.line([(310, 315), (955, 315)], fill=(195, 218, 232), width=1)
+    draw.text((955, 326), ar("محل الإقامة:"), font=font_addr_label, fill=(70, 95, 120), anchor="rt")
+
+    # Address Lines
+    draw.text((955, 355), ar("١٥ شارع النصر - المعادي"), font=font_address, fill=(15, 30, 50), anchor="rt")
+    draw.text((955, 395), ar("قسم المعادي - محافظة القاهرة"), font=font_address, fill=(15, 30, 50), anchor="rt")
+
+    # Serial Number in small official font above bottom bar
+    font_serial = get_font(FONT_BOLD, 14)
+    draw.text((955, 475), ar("مسلسل: س / ٩١٨٢٤٠١٥"), font=font_serial, fill=(70, 95, 120), anchor="rt")
+    draw.text((310, 475), "CODE: 01-EGY-CAI", font=get_font(FONT_MONO, 13), fill=(100, 125, 150), anchor="lt")
+
+    # ---------------------------------------------------------
+    # Bottom Section: 14-Digit National ID White Box
+    # ---------------------------------------------------------
+    box_rect = [45, 505, width - 45, 585]
+    draw.rounded_rectangle(box_rect, radius=14, fill=(255, 255, 255), outline=(20, 50, 85), width=3)
+    draw.rounded_rectangle([box_rect[0] + 2, box_rect[1] + 2, box_rect[2] - 2, box_rect[3] - 2], radius=12, outline=(210, 225, 235), width=1)
+
+    # "الرقم القومي:" label on right
+    draw.text((925, 545), ar("الرقم القومي:"), font=get_font(FONT_BOLD, 24), fill=(20, 50, 85), anchor="rm")
+
+    # 14 Digits in bold, high-contrast monospace OCR font
+    font_id = get_font(FONT_MONO, 40)
+    draw.text((75, 545), "29810150101235", font=font_id, fill=(10, 20, 35), anchor="lm")
 
     path = "sample_documents/national_id_front.png"
     img.save(path, quality=95)
     print(f"Generated: {path}")
 
+
 # -------------------------------------------------------------
 # 2. National ID - Back
 # -------------------------------------------------------------
 def generate_id_back():
-    width, height = 1000, 620
-    img = Image.new("RGB", (width, height), color=(235, 243, 248))
+    width, height = 1000, 630
+    img = Image.new("RGB", (width, height), color=(230, 242, 248))
     draw = ImageDraw.Draw(img)
 
+    for y in range(height):
+        ratio = y / height
+        r = int(225 + 12 * ratio)
+        g = int(238 + 6 * ratio)
+        b = int(246 + 2 * ratio)
+        draw.line([(0, y), (width, y)], fill=(r, g, b))
+
     # Card border
-    draw.rounded_rectangle([15, 15, width - 15, height - 15], radius=24, outline=(150, 185, 210), width=4)
-    draw.rounded_rectangle([25, 25, width - 25, height - 25], radius=20, outline=(190, 215, 230), width=2)
+    draw.rounded_rectangle([15, 15, width - 15, height - 15], radius=26, outline=(140, 178, 200), width=3)
+    draw.rounded_rectangle([22, 22, width - 22, height - 22], radius=22, outline=(185, 215, 230), width=1)
+
+    # Background waves
+    for curve_idx in range(8):
+        pts = []
+        for x in range(30, width - 30, 8):
+            y = 50 + curve_idx * 30 + math.sin(x * 0.02) * 12
+            pts.append((x, int(y)))
+        draw.line(pts, fill=(210, 230, 242), width=1)
 
     # Top Data Section
     font_lbl = get_font(FONT_BOLD, 20)
@@ -141,8 +394,6 @@ def generate_id_back():
 
     # Middle Barcode section
     draw.rounded_rectangle([45, 240, width - 45, 310], radius=10, fill=(255, 255, 255), outline=(190, 205, 220), width=2)
-    # Draw simulated barcode lines
-    import random
     random.seed(42)
     bx = 70
     while bx < 650:
@@ -152,21 +403,22 @@ def generate_id_back():
 
     draw.text((930, 275), ar("تاريخ الإصدار: 2024/10/15"), font=get_font(FONT_BOLD, 18), fill=(60, 75, 95), anchor="rm")
 
-    # Bottom MRZ Section
-    draw.rounded_rectangle([45, 335, width - 45, 580], radius=16, fill=(15, 23, 42))
-    
+    # Bottom MRZ Section (Egyptian National ID MRZ matching "محمد محمد أحمد حسنين")
+    draw.rounded_rectangle([45, 335, width - 45, 585], radius=16, fill=(15, 23, 42))
+
     font_mrz = get_font(FONT_MONO, 28)
     line1 = "ID<EGY29810150101235<<<<<<<<<<<<"
     line2 = "9810158M3110145EGY<<<<<<<<<<<8"
-    line3 = "ALI<<AHMED<MOHAMED<MAHMOUD<<<<<"
+    line3 = "HASSANEIN<<MOHAMED<MOHAMED<AHMED"
 
-    draw.text((80, 390), line1, font=font_mrz, fill=(56, 189, 248), anchor="lm")
-    draw.text((80, 460), line2, font=font_mrz, fill=(56, 189, 248), anchor="lm")
-    draw.text((80, 530), line3, font=font_mrz, fill=(56, 189, 248), anchor="lm")
+    draw.text((80, 395), line1, font=font_mrz, fill=(56, 189, 248), anchor="lm")
+    draw.text((80, 465), line2, font=font_mrz, fill=(56, 189, 248), anchor="lm")
+    draw.text((80, 535), line3, font=font_mrz, fill=(56, 189, 248), anchor="lm")
 
     path = "sample_documents/national_id_back.png"
     img.save(path, quality=95)
     print(f"Generated: {path}")
+
 
 # -------------------------------------------------------------
 # 3. Proof of Residence (Electricity Bill)
@@ -193,65 +445,67 @@ def generate_proof_of_residence():
     draw.text((width - 70, 225), ar("بيانات المشترك ومحل السكن:"), font=get_font(FONT_BOLD, 22), fill=(3, 105, 161), anchor="rm")
     draw.line([(55, 250), (width - 55, 250)], fill=(226, 232, 240), width=2)
 
-    # Name (Matching National ID)
+    # Name (Matching National ID: محمد محمد أحمد حسنين)
     draw.text((width - 70, 290), ar("اسم المشترك:"), font=get_font(FONT_BOLD, 20), fill=(71, 85, 105), anchor="rm")
-    draw.text((width - 240, 290), ar("أحمد محمد محمود علي"), font=get_font(FONT_BOLD, 26), fill=(15, 23, 42), anchor="rm")
+    draw.text((width - 240, 290), ar("محمد محمد أحمد حسنين"), font=get_font(FONT_BOLD, 26), fill=(15, 23, 42), anchor="rm")
 
     # Address (Matching National ID)
-    draw.text((width - 70, 350), ar("العنوان:"), font=get_font(FONT_BOLD, 20), fill=(71, 85, 105), anchor="rm")
-    draw.text((width - 180, 350), ar("١٥ شارع النصر، المعادي، القاهرة"), font=get_font(FONT_BOLD, 24), fill=(15, 23, 42), anchor="rm")
+    draw.text((width - 70, 350), ar("العنوان بالتفصيل:"), font=get_font(FONT_BOLD, 20), fill=(71, 85, 105), anchor="rm")
+    draw.text((width - 240, 350), ar("١٥ شارع النصر، المعادي، القاهرة"), font=get_font(FONT_BOLD, 24), fill=(15, 23, 42), anchor="rm")
 
-    # Account & Meter
-    draw.text((width - 70, 410), ar("رقم الحساب: 01-4458-9921"), font=get_font(FONT_BOLD, 18), fill=(51, 65, 85), anchor="rm")
-    draw.text((450, 410), ar("رقم العداد: MTR-8820194"), font=get_font(FONT_BOLD, 18), fill=(51, 65, 85), anchor="rm")
-    draw.text((70, 410), ar("فترة الاستهلاك: أكتوبر ٢٠٢٦"), font=get_font(FONT_BOLD, 18), fill=(51, 65, 85), anchor="lm")
+    # Customer & Meter Number
+    draw.text((width - 70, 410), ar("رقم السداد الإلكتروني:"), font=get_font(FONT_BOLD, 18), fill=(71, 85, 105), anchor="rm")
+    draw.text((width - 270, 410), "9012489210", font=get_font(FONT_BOLD, 20), fill=(15, 23, 42), anchor="rm")
 
-    # Readings Table
-    draw.rounded_rectangle([45, 490, width - 45, 680], radius=10, fill=(255, 255, 255), outline=(203, 213, 225), width=2)
-    draw.rectangle([45, 490, width - 45, 540], fill=(241, 245, 249))
-    draw.text((width - 100, 515), ar("القراءة الحالية"), font=get_font(FONT_BOLD, 18), fill=(51, 65, 85), anchor="rm")
-    draw.text((width - 300, 515), ar("القراءة السابقة"), font=get_font(FONT_BOLD, 18), fill=(51, 65, 85), anchor="rm")
-    draw.text((width - 500, 515), ar("الاستهلاك"), font=get_font(FONT_BOLD, 18), fill=(51, 65, 85), anchor="rm")
-    draw.text((150, 515), ar("قيمة الاستهلاك"), font=get_font(FONT_BOLD, 18), fill=(51, 65, 85), anchor="mm")
+    draw.text((420, 410), ar("رقم العداد:"), font=get_font(FONT_BOLD, 18), fill=(71, 85, 105), anchor="rm")
+    draw.text((320, 410), "EGY-781920", font=get_font(FONT_BOLD, 20), fill=(15, 23, 42), anchor="rm")
 
-    draw.line([(45, 540), (width - 45, 540)], fill=(203, 213, 225), width=2)
-    draw.text((width - 100, 600), "18450", font=get_font(FONT_BOLD, 22), fill=(15, 23, 42), anchor="rm")
-    draw.text((width - 300, 600), "17990", font=get_font(FONT_BOLD, 22), fill=(15, 23, 42), anchor="rm")
-    draw.text((width - 500, 600), ar("٤٦٠ ك.و.س"), font=get_font(FONT_BOLD, 22), fill=(15, 23, 42), anchor="rm")
-    draw.text((150, 600), ar("٤٥٠.٠٠ ج.م"), font=get_font(FONT_BOLD, 22), fill=(15, 23, 42), anchor="mm")
+    # Invoice Details Table
+    draw.rounded_rectangle([45, 490, width - 45, 870], radius=14, fill=(255, 255, 255), outline=(203, 213, 225), width=2)
+    draw.rectangle([45, 490, width - 45, 545], fill=(241, 245, 249))
+    draw.text((width - 70, 517), ar("بيان المحاسبة والاستهلاك الشهري"), font=get_font(FONT_BOLD, 20), fill=(30, 41, 59), anchor="rm")
 
-    # Total Amount Due Banner
-    draw.rounded_rectangle([45, 730, width - 45, 830], radius=16, fill=(240, 253, 244), outline=(34, 197, 94), width=3)
-    draw.text((width - 80, 780), ar("المبلغ الإجمالي المسدد:"), font=get_font(FONT_BOLD, 24), fill=(22, 101, 52), anchor="rm")
-    draw.text((80, 780), ar("٤٨٥.٥٠ جنيه مصري"), font=get_font(FONT_BOLD, 30), fill=(21, 128, 61), anchor="lm")
+    items = [
+        ("فترة الاستهلاك", "من 01/09/2026 إلى 30/09/2026"),
+        ("القراءة السابقة للعداد", "14,250 ك.و.س"),
+        ("القراءة الحالية للعداد", "14,680 ك.و.س"),
+        ("كمية الاستهلاك الفعلي", "430 ك.و.س"),
+        ("قيمة مقابل الاستهلاك", "485.50 ج.م"),
+        ("رسوم النظافة وخدمة العملاء", "25.00 ج.م"),
+    ]
 
-    # Stamp on bottom right
-    stamp_cx, stamp_cy = 250, 970
-    draw.ellipse([stamp_cx - 85, stamp_cy - 85, stamp_cx + 85, stamp_cy + 85], outline=(220, 38, 38), width=4)
-    draw.ellipse([stamp_cx - 75, stamp_cy - 75, stamp_cx + 75, stamp_cy + 75], outline=(220, 38, 38), width=2)
-    draw.text((stamp_cx, stamp_cy - 25), ar("شركة جنوب القاهرة"), font=get_font(FONT_BOLD, 15), fill=(220, 38, 38), anchor="mm")
-    draw.text((stamp_cx, stamp_cy + 5), ar("مدفوع بالكامل"), font=get_font(FONT_BOLD, 22), fill=(220, 38, 38), anchor="mm")
-    draw.text((stamp_cx, stamp_cy + 35), ar("خزينة المعادي ٢٠٢٦"), font=get_font(FONT_BOLD, 14), fill=(220, 38, 38), anchor="mm")
+    ty = 565
+    for label, val in items:
+        draw.text((width - 80, ty), ar(label), font=get_font(FONT_REGULAR, 19), fill=(51, 65, 85), anchor="rm")
+        draw.text((80, ty), ar(val), font=get_font(FONT_BOLD, 20), fill=(15, 23, 42), anchor="lm")
+        draw.line([(55, ty + 28), (width - 55, ty + 28)], fill=(241, 245, 249), width=1)
+        ty += 48
 
-    # Barcode
-    draw.text((width - 70, 940), ar("رقم الإيصال: REC-2026-1049281"), font=get_font(FONT_BOLD, 18), fill=(71, 85, 105), anchor="rm")
-    # barcode lines
-    for bx in range(550, width - 70, 10):
-        draw.line([(bx, 970), (bx, 1040)], fill=(15, 23, 42), width=4)
+    # Total Amount Paid
+    draw.rounded_rectangle([45, 895, width - 45, 985], radius=12, fill=(240, 253, 244), outline=(34, 197, 94), width=2)
+    draw.text((width - 80, 940), ar("إجمالي المبلغ المسدد بالكامل:"), font=get_font(FONT_BOLD, 22), fill=(21, 128, 61), anchor="rm")
+    draw.text((80, 940), "510.50 EGP", font=get_font(FONT_BOLD, 28), fill=(21, 128, 61), anchor="lm")
+
+    # Payment Confirmation Stamp
+    stamp_cx, stamp_cy = width // 2, 1055
+    draw.rounded_rectangle([stamp_cx - 160, stamp_cy - 40, stamp_cx + 160, stamp_cy + 40], radius=16, fill=(254, 242, 242), outline=(220, 38, 38), width=3)
+    draw.text((stamp_cx, stamp_cy - 12), ar("تم السداد إلكترونياً - فوري"), font=get_font(FONT_BOLD, 20), fill=(185, 28, 28), anchor="mm")
+    draw.text((stamp_cx, stamp_cy + 16), "PAID * AUTH: 9812401 * 2026-10-05", font=get_font(FONT_BOLD, 13), fill=(185, 28, 28), anchor="mm")
 
     path = "sample_documents/proof_of_residence.png"
     img.save(path, quality=95)
     print(f"Generated: {path}")
 
+
 # -------------------------------------------------------------
-# 4. Proof of Income (Salary Certificate / HR Letter)
+# 4. Proof of Income (Salary Certificate)
 # -------------------------------------------------------------
 def generate_proof_of_income():
     width, height = 900, 1200
     img = Image.new("RGB", (width, height), color=(255, 255, 255))
     draw = ImageDraw.Draw(img)
 
-    # Elegant letterhead border
+    # Document border
     draw.rectangle([25, 25, width - 25, height - 25], outline=(203, 213, 225), width=2)
 
     # Company Header
@@ -277,9 +531,9 @@ def generate_proof_of_income():
     p1 = "تشهد إدارة الموارد البشرية بشركة النيل للحلول البرمجية المتطورة بأن السيد /"
     draw.text((width - 70, 370), ar(p1), font=get_font(FONT_BOLD, 19), fill=(30, 41, 59), anchor="rm")
 
-    # Employee Name Highlight
+    # Employee Name Highlight (Matching National ID: محمد محمد أحمد حسنين)
     draw.rounded_rectangle([width - 450, 400, width - 70, 450], radius=8, fill=(240, 253, 250))
-    draw.text((width - 80, 425), ar("أحمد محمد محمود علي"), font=get_font(FONT_BOLD, 26), fill=(15, 118, 110), anchor="rm")
+    draw.text((width - 80, 425), ar("محمد محمد أحمد حسنين"), font=get_font(FONT_BOLD, 26), fill=(15, 118, 110), anchor="rm")
 
     p2 = "مصري الجنسية، ويحمل بطاقة رقم قومي رقم (29810150101235)،"
     draw.text((width - 70, 480), ar(p2), font=get_font(FONT_BOLD, 19), fill=(30, 41, 59), anchor="rm")
@@ -293,13 +547,13 @@ def generate_proof_of_income():
     # Table of Salary
     table_top = 610
     draw.rectangle([60, table_top, width - 60, table_top + 280], outline=(203, 213, 225), width=2)
-    
+
     rows = [
         ("الراتب الأساسي", "25,000 ج.م"),
         ("بدلات وحوافز ثابتة", "10,000 ج.م"),
         ("إجمالي الدخل الشهري", "35,000 ج.م"),
         ("الاستقطاعات القانونية (تأمينات وضريبة كسب عمل)", "5,600 ج.م"),
-        ("صافي الراتب الشهري المستحق الصرف", "29,400 ج.م")
+        ("صافي الراتب الشهري المستحق الصرف", "29,400 ج.م"),
     ]
 
     curr_y = table_top
@@ -308,12 +562,12 @@ def generate_proof_of_income():
         is_gross = idx == 2
         bg = (240, 253, 244) if is_net else ((248, 250, 252) if is_gross else (255, 255, 255))
         draw.rectangle([60, curr_y, width - 60, curr_y + 56], fill=bg, outline=(203, 213, 225), width=1)
-        
+
         lbl_font = get_font(FONT_BOLD, 21 if is_net else 19)
         val_font = get_font(FONT_BOLD, 23 if is_net else 20)
         lbl_col = (21, 128, 61) if is_net else (15, 23, 42)
         val_col = (21, 128, 61) if is_net else (15, 23, 42)
-        
+
         draw.text((width - 90, curr_y + 28), ar(label), font=lbl_font, fill=lbl_col, anchor="rm")
         draw.text((90, curr_y + 28), ar(val), font=val_font, fill=val_col, anchor="lm")
         curr_y += 56
@@ -336,6 +590,7 @@ def generate_proof_of_income():
     path = "sample_documents/proof_of_income.png"
     img.save(path, quality=95)
     print(f"Generated: {path}")
+
 
 if __name__ == "__main__":
     generate_id_front()

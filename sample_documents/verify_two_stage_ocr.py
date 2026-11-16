@@ -86,17 +86,16 @@ def check_two_stage_pipeline():
         "وزارة الداخلية\n"
         "قطاع مصلحة الأحوال المدنية\n"
         "بطاقة تحقيق شخصية\n"
-        "الاسم:\n"
-        "أحمد\n"
-        "محمد محمود علي\n"
-        "العنوان:\n"
-        "١٥ شارع النصر، المعادي، القاهرة\n"
+        "محمد\n"
+        "محمد أحمد حسنين\n"
+        "١٥ شارع النصر - المعادي\n"
+        "قسم المعادي - محافظة القاهرة\n"
         "الرقم القومي:\n"
         "29810150101235"
     )
 
     sample_parsed = {
-        "name": "أحمد محمد محمود علي",
+        "name": "محمد محمد أحمد حسنين",
         "national_id": "29810150101235",
         "address": "١٥ شارع النصر، المعادي، القاهرة",
     }
@@ -121,7 +120,7 @@ def check_two_stage_pipeline():
         # Stage 1: extract_raw_text
         print("  - Running Stage 1: extract_raw_text...")
         raw_text = extract_raw_text(id_front_path, DocumentType.NATIONAL_ID_FRONT)
-        assert "أحمد" in raw_text
+        assert "محمد" in raw_text
         assert "29810150101235" in raw_text
         print("    [PASS] Stage 1 raw text extracted verbatim:")
         for line in raw_text.splitlines()[:5]:
@@ -131,7 +130,7 @@ def check_two_stage_pipeline():
         # Stage 2: parse_document_text
         print("  - Running Stage 2: parse_document_text...")
         parsed = parse_document_text(raw_text, DocumentType.NATIONAL_ID_FRONT)
-        assert parsed["name"] == "أحمد محمد محمود علي"
+        assert parsed["name"] == "محمد محمد أحمد حسنين"
         assert parsed["national_id"] == "29810150101235"
         print(f"    [PASS] Stage 2 structured output: {json.dumps(parsed, ensure_ascii=False)}")
 
