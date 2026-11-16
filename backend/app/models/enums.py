@@ -4,6 +4,8 @@ import enum
 class UserRole(str, enum.Enum):
     CUSTOMER = "customer"
     EMPLOYEE = "employee"
+    customer = "customer"
+    employee = "employee"
 
 
 class RequestStatus(str, enum.Enum):
