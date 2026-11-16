@@ -88,7 +88,9 @@ def test_end_to_end_extraction_with_sample_id_front():
         mock_ocr_llm.invoke.assert_called_once()
         invoked_msg = mock_ocr_llm.invoke.call_args[0][0][0]
         assert invoked_msg.content[0]["text"] == get_ocr_prompt(DocumentType.NATIONAL_ID_FRONT)
-        assert invoked_msg.content[1]["image_url"].startswith("data:image/png;base64,")
+        img_payload = invoked_msg.content[1]["image_url"]
+        img_url = img_payload["url"] if isinstance(img_payload, dict) else img_payload
+        assert img_url.startswith("data:image/png;base64,")
 
         # 2. Test Stage 2: parse_document_text
         parsed_fields = parse_document_text(raw_text, DocumentType.NATIONAL_ID_FRONT)

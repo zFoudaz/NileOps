@@ -85,7 +85,7 @@ def extract_raw_text(image_path: str, document_type: Union[DocumentType, str]) -
             {"type": "text", "text": prompt},
             {
                 "type": "image_url",
-                "image_url": f"data:{mime_type};base64,{b64_image}",
+                "image_url": {"url": f"data:{mime_type};base64,{b64_image}"},
             },
         ]
     )

@@ -103,7 +103,9 @@ def test_extract_raw_text(tmp_path):
         # Check text prompt contains Stage 1 OCR prompt
         assert invoked_message.content[0]["text"] == get_ocr_prompt(DocumentType.NATIONAL_ID_FRONT)
         # Check image payload is base64 encoded
-        assert invoked_message.content[1]["image_url"].startswith("data:image/jpeg;base64,")
+        img_payload = invoked_message.content[1]["image_url"]
+        img_url = img_payload["url"] if isinstance(img_payload, dict) else img_payload
+        assert img_url.startswith("data:image/jpeg;base64,")
 
 
 def test_extract_raw_text_missing_file():
@@ -389,7 +391,9 @@ def test_extract_dynamic_mime_type(tmp_path):
         call_args = mock_ocr_llm.invoke.call_args[0][0]
         human_message = call_args[0]
         image_part = human_message.content[1]
-        assert image_part["image_url"].startswith("data:image/png;base64,")
+        img_payload = image_part["image_url"]
+        img_url = img_payload["url"] if isinstance(img_payload, dict) else img_payload
+        assert img_url.startswith("data:image/png;base64,")
 
 
 # ---------------------------------------------------------------------------

@@ -29,13 +29,13 @@ def create_chat_model(provider: str, model_name: str, **kwargs: Any) -> BaseChat
                 "OpenAI provider requested but `langchain-openai` is not installed. "
                 "Install it using `pip install langchain-openai`."
             ) from exc
-        api_key = kwargs.pop("api_key", None) or settings.OPENAI_API_KEY or None
-        base_url = kwargs.pop("base_url", None) or settings.OPENAI_BASE_URL or None
+        api_key = kwargs.pop("api_key", None) or getattr(settings, "OPENAI_API_KEY", None) or None
+        base_url = kwargs.pop("base_url", None) or getattr(settings, "OPENAI_BASE_URL", None) or None
 
         init_kwargs = dict(kwargs)
-        if api_key:
+        if api_key and isinstance(api_key, str) and api_key.strip():
             init_kwargs["api_key"] = api_key
-        if base_url:
+        if base_url and isinstance(base_url, str) and base_url.strip():
             init_kwargs["base_url"] = base_url
 
         return ChatOpenAI(model=model_name, **init_kwargs)
@@ -48,15 +48,15 @@ get_llm = create_chat_model
 
 def get_ocr_llm(**kwargs: Any) -> BaseChatModel:
     """Instantiate the chat model configured for OCR processing."""
-    base_url = kwargs.pop("base_url", None) or settings.OCR_BASE_URL or None
-    if base_url:
+    base_url = kwargs.pop("base_url", None) or getattr(settings, "OCR_BASE_URL", None)
+    if base_url and isinstance(base_url, str):
         kwargs["base_url"] = base_url
     return create_chat_model(settings.OCR_PROVIDER, settings.OCR_MODEL, **kwargs)
 
 
 def get_parser_llm(**kwargs: Any) -> BaseChatModel:
     """Instantiate the chat model configured for document parsing."""
-    base_url = kwargs.pop("base_url", None) or settings.PARSER_BASE_URL or None
-    if base_url:
+    base_url = kwargs.pop("base_url", None) or getattr(settings, "PARSER_BASE_URL", None)
+    if base_url and isinstance(base_url, str):
         kwargs["base_url"] = base_url
     return create_chat_model(settings.PARSER_PROVIDER, settings.PARSER_MODEL, **kwargs)

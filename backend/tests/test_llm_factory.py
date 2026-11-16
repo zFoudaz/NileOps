@@ -42,6 +42,7 @@ def test_get_ocr_llm_uses_settings():
         mock_settings.OCR_PROVIDER = "ollama"
         mock_settings.OCR_MODEL = "ocr-vision-model"
         mock_settings.OLLAMA_BASE_URL = "http://localhost:11434"
+        mock_settings.OCR_BASE_URL = ""
 
         llm = get_ocr_llm()
         assert isinstance(llm, ChatOllama)
@@ -54,6 +55,7 @@ def test_get_parser_llm_uses_settings():
         mock_settings.PARSER_PROVIDER = "ollama"
         mock_settings.PARSER_MODEL = "parser-text-model"
         mock_settings.OLLAMA_BASE_URL = "http://localhost:11434"
+        mock_settings.PARSER_BASE_URL = ""
 
         llm = get_parser_llm()
         assert isinstance(llm, ChatOllama)
@@ -70,6 +72,25 @@ def test_openai_provider_mocked():
     """Verify openai provider instantiates ChatOpenAI dynamically."""
     mock_chat_openai_cls = MagicMock()
     with patch.dict("sys.modules", {"langchain_openai": MagicMock(ChatOpenAI=mock_chat_openai_cls)}):
-        llm = create_chat_model("openai", "gpt-4o", api_key="sk-test", temperature=0.1)
-        mock_chat_openai_cls.assert_called_once_with(model="gpt-4o", api_key="sk-test", temperature=0.1)
+        with patch("app.services.llm.factory.settings.OPENAI_BASE_URL", ""):
+            llm = create_chat_model("openai", "gpt-4o", api_key="sk-test", temperature=0.1)
+            mock_chat_openai_cls.assert_called_once_with(model="gpt-4o", api_key="sk-test", temperature=0.1)
+            assert llm == mock_chat_openai_cls.return_value
+
+
+def test_openai_provider_custom_base_url():
+    """Verify openai provider forwards custom base_url."""
+    mock_chat_openai_cls = MagicMock()
+    with patch.dict("sys.modules", {"langchain_openai": MagicMock(ChatOpenAI=mock_chat_openai_cls)}):
+        llm = create_chat_model(
+            "openai",
+            "custom-model",
+            api_key="sk-custom",
+            base_url="https://api.groq.com/openai/v1",
+        )
+        mock_chat_openai_cls.assert_called_once_with(
+            model="custom-model",
+            api_key="sk-custom",
+            base_url="https://api.groq.com/openai/v1",
+        )
         assert llm == mock_chat_openai_cls.return_value
