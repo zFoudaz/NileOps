@@ -240,68 +240,11 @@ git commit -m "feat: request creation, document upload with type validation"
 - Consumes: nothing
 - Produces: `decode_national_id(national_id: str) -> NationalIdInfo` where `NationalIdInfo` has `date_of_birth: date`, `gender: str`, `governorate: str`, `is_valid: bool`, `error: str | None`
 
-- [ ] **Step 1: Write failing tests**
-
-```python
-def test_decode_valid_male_1900s():
-    # Century=2, known DOB, odd serial → male
-    result = decode_national_id("29001011234567")
-    assert result.date_of_birth == date(1990, 1, 1)
-    assert result.gender == "male"
-    assert result.is_valid is True
-
-def test_decode_valid_female_2000s():
-    # Century=3, known DOB, even serial → female
-    result = decode_national_id("30506152345678")
-    assert result.date_of_birth == date(2005, 6, 15)
-    assert result.gender == "female"
-
-def test_decode_invalid_length():
-    result = decode_national_id("123")
-    assert result.is_valid is False
-
-def test_decode_invalid_date():
-    # Month=13 is impossible
-    result = decode_national_id("29013011234567")
-    assert result.is_valid is False
-
-def test_decode_invalid_governorate():
-    result = decode_national_id("29001019934567")
-    assert result.is_valid is False
-
-def test_decode_extracts_governorate():
-    # Governorate code 01 = Cairo
-    result = decode_national_id("29001010112345")
-    assert result.governorate == "القاهرة"
-
-def test_decode_2000s_century():
-    # Review Focus #1: century=3 must produce 2000s date, not 1900s
-    result = decode_national_id("30506150112345")
-    assert result.date_of_birth.year == 2005  # not 1905
-
-def test_decode_impossible_date_valid_format():
-    # Review Focus #5: 14 digits, valid governorate, but Feb 30 → invalid
-    result = decode_national_id("29002300112345")
-    assert result.is_valid is False
-```
-
-- [ ] **Step 2: Run tests to verify they fail**
-
-Run: `cd backend && pytest tests/test_national_id_decoder.py -v`
-Expected: FAIL — module not found
-
-- [ ] **Step 3: Implement `decode_national_id` in `national_id_decoder.py`**
-
-Parse the 14-digit string: extract century (digit 0), DOB (digits 1-6), governorate code (digits 7-8), serial (digits 9-12), check digit (digit 13). Validate date is real, governorate code maps to a known name. Gender from serial's last digit (odd=male, even=female).
-
-Governorate codes map (01=القاهرة, 02=الإسكندرية, 03=بورسعيد, 04=السويس, ...).
-
-- [ ] **Step 4: Run tests to verify they pass**
-
-Run: `cd backend && pytest tests/test_national_id_decoder.py -v`
-Expected: 8 PASS
-
-- [ ] **Step 5: Commit**
+- [x] **Step 1: Write failing tests**
+- [x] **Step 2: Run tests to verify they fail**
+- [x] **Step 3: Implement `decode_national_id` in `national_id_decoder.py`**
+- [x] **Step 4: Run tests to verify they pass**
+- [x] **Step 5: Commit**
 
 ```bash
 git add -A
