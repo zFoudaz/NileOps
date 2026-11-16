@@ -83,6 +83,7 @@ def extract_document_fields(image_path: str, document_type: DocumentType) -> Dic
     llm = ChatOllama(
         base_url=settings.OLLAMA_BASE_URL,
         model=settings.OLLAMA_MODEL,
+        reasoning=False
     )
     message = HumanMessage(
         content=[

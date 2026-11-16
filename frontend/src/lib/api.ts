@@ -51,7 +51,8 @@ export const resolveImageUrl = (path?: string | null): string => {
   ) {
     return path;
   }
-  const cleanPath = path.startsWith('/') ? path : `/${path}`;
+  const normalized = path.replace(/\\/g, '/');
+  const cleanPath = normalized.startsWith('/') ? normalized : `/${normalized}`;
   return `${getApiBaseUrl()}${cleanPath}`;
 };
 
