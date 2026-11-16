@@ -1,0 +1,11 @@
+@import "tailwindcss";
+
+@layer base {
+  * {
+    box-sizing: border-box;
+  }
+  body {
+    direction: rtl;
+    text-align: right;
+  }
+}
