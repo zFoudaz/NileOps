@@ -105,8 +105,8 @@
 - Modify: `docker-compose.yml` (environment variables for OCR & Parser models)
 - Rebuild & test in Docker environment
 
-- [ ] **Step 1: Verify end-to-end processing with sample documents**
+- [x] **Step 1: Verify end-to-end processing with sample documents**
   - Run synthetic test script or test case with sample Egyptian ID (`national_id_front.png`).
-- [ ] **Step 2: Rebuild backend container**
+- [x] **Step 2: Rebuild backend container**
   - Run `docker compose up -d --build backend`.
-- [ ] **Step 3: Commit and push changes to master**
+- [x] **Step 3: Commit and push changes to master**
