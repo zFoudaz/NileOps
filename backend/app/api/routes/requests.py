@@ -4,10 +4,20 @@ from fastapi import APIRouter, Depends, HTTPException, status
 from sqlalchemy.orm import Session
 
 from app.api.deps import get_current_user, get_db, require_role
+from app.models.document import Document
 from app.models.enums import RequestStatus, UserRole
 from app.models.request import Request
 from app.models.user import User
-from app.schemas.request import RequestCreate, RequestResponse
+from app.schemas.document import DocumentResponse
+from app.schemas.request import (
+    CorrectionRequest,
+    DocumentExtractedData,
+    ExtractedDataResponse,
+    ExtractedFieldInfo,
+    RequestCreate,
+    RequestResponse,
+)
+from app.schemas.validation_result import ValidationResultResponse
 
 router = APIRouter()
 
@@ -100,4 +110,172 @@ def get_request_detail(
             detail="Request not found",
         )
 
+    return req
+
+
+@router.get(
+    "/{id}/extracted-data",
+    response_model=ExtractedDataResponse,
+    summary="Get extracted and corrected data for customer review",
+)
+@router.get(
+    "/{id}/extracted-data/",
+    response_model=ExtractedDataResponse,
+    summary="Get extracted and corrected data for customer review",
+    include_in_schema=False,
+)
+def get_extracted_data(
+    id: uuid.UUID,
+    current_user: User = Depends(get_current_user),
+    db: Session = Depends(get_db),
+) -> ExtractedDataResponse:
+    req = db.query(Request).filter(Request.id == id).first()
+    if not req:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail="Request not found",
+        )
+
+    # Customers can only see their own requests
+    user_role = (
+        current_user.role.value.lower()
+        if hasattr(current_user.role, "value")
+        else str(current_user.role).lower()
+    )
+    if user_role == UserRole.CUSTOMER.value and req.customer_id != current_user.id:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail="Request not found",
+        )
+
+    doc_responses = []
+    for doc in req.documents:
+        extracted = doc.extracted_data or {}
+        corrected = doc.corrected_data or {}
+
+        all_keys = list(dict.fromkeys(list(extracted.keys()) + list(corrected.keys())))
+        fields = []
+        editable_flags = {}
+        for key in all_keys:
+            val = corrected.get(key, extracted.get(key))
+            editable = (key.lower() != "expiry_date")
+            fields.append(ExtractedFieldInfo(name=key, value=val, editable=editable))
+            editable_flags[key] = editable
+
+        norm_path = doc.file_path.replace("\\", "/") if doc.file_path else ""
+        img_url = f"/{norm_path}" if norm_path and not norm_path.startswith("/") else norm_path
+
+        doc_responses.append(
+            DocumentExtractedData(
+                id=doc.id,
+                document_id=doc.id,
+                document_type=doc.document_type,
+                file_path=doc.file_path,
+                image_url=img_url,
+                ocr_required=doc.ocr_required,
+                ocr_completed=doc.ocr_completed,
+                extracted_data=doc.extracted_data,
+                corrected_data=doc.corrected_data,
+                fields=fields,
+                editable_flags=editable_flags,
+            )
+        )
+
+    val_responses = [
+        ValidationResultResponse.model_validate(vr)
+        for vr in req.validation_results
+    ]
+
+    return ExtractedDataResponse(
+        request_id=req.id,
+        status=req.status,
+        auto_decision=req.auto_decision,
+        documents=doc_responses,
+        validation_results=val_responses,
+    )
+
+
+@router.patch(
+    "/{id}/corrections",
+    response_model=DocumentResponse,
+    summary="Submit field corrections for a document",
+)
+@router.patch(
+    "/{id}/corrections/",
+    response_model=DocumentResponse,
+    summary="Submit field corrections for a document",
+    include_in_schema=False,
+)
+def submit_corrections(
+    id: uuid.UUID,
+    correction_in: CorrectionRequest,
+    current_user: User = Depends(require_role(UserRole.CUSTOMER)),
+    db: Session = Depends(get_db),
+) -> Document:
+    req = db.query(Request).filter(Request.id == id).first()
+    if not req or req.customer_id != current_user.id:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail="Request not found",
+        )
+
+    # Expiry date cannot be edited by user
+    if any(k.lower() == "expiry_date" for k in correction_in.corrected_fields.keys()):
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail="expiry_date cannot be edited",
+        )
+
+    doc = (
+        db.query(Document)
+        .filter(Document.id == correction_in.document_id, Document.request_id == req.id)
+        .first()
+    )
+    if not doc:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail="Document not found",
+        )
+
+    existing_corrected = dict(doc.corrected_data or {})
+    existing_corrected.update(correction_in.corrected_fields)
+    doc.corrected_data = existing_corrected
+
+    db.commit()
+    db.refresh(doc)
+    return doc
+
+
+@router.post(
+    "/{id}/submit",
+    response_model=RequestResponse,
+    summary="Submit request for employee review",
+)
+@router.post(
+    "/{id}/submit/",
+    response_model=RequestResponse,
+    summary="Submit request for employee review",
+    include_in_schema=False,
+)
+def submit_request_for_review(
+    id: uuid.UUID,
+    current_user: User = Depends(require_role(UserRole.CUSTOMER)),
+    db: Session = Depends(get_db),
+) -> Request:
+    req = db.query(Request).filter(Request.id == id).first()
+    if not req or req.customer_id != current_user.id:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail="Request not found",
+        )
+
+    if req.status == RequestStatus.PROCESSING:
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail="Cannot submit request while it is processing",
+        )
+
+    req.status = RequestStatus.PENDING_REVIEW
+    db.commit()
+    db.refresh(req)
     return req
