@@ -159,74 +159,16 @@ frontend/
 **Interfaces:**
 - Produces: `Base` (declarative base), `get_db()` session dependency, `User`, `Request`, `Document`, `ValidationResult` ORM models, `Settings` config class
 
-- [ ] **Step 1: Create `requirements.txt`**
-
-```
-fastapi[standard]==0.115.*
-sqlalchemy[asyncio]==2.0.*
-alembic==1.13.*
-psycopg2-binary==2.9.*
-python-jose[cryptography]==3.3.*
-passlib[bcrypt]==1.7.*
-python-multipart==0.0.*
-python-dotenv==1.0.*
-langchain==0.3.*
-langchain-ollama==0.3.*
-pydantic-settings==2.6.*
-pytest==8.3.*
-httpx==0.27.*
-```
-
-- [ ] **Step 2: Create `backend/app/config.py`**
-
-`Settings(BaseSettings)` with fields: `DATABASE_URL`, `SECRET_KEY`, `ALGORITHM="HS256"`, `ACCESS_TOKEN_EXPIRE_MINUTES=1440`, `OLLAMA_BASE_URL="http://localhost:11434"`, `OLLAMA_MODEL="qwen3.5:4b"`, `UPLOAD_DIR="uploads"`. Load from `.env`.
-
-- [ ] **Step 3: Create `backend/app/database.py`**
-
-SQLAlchemy engine from `Settings.DATABASE_URL`, `SessionLocal` factory, `Base = declarative_base()`.
-
-- [ ] **Step 4: Create ORM models**
-
-All four models as specified in the design doc — User, Request, Document, ValidationResult. Use `UUID` PKs, proper `Enum` types for role/status/document_type, `JSONB` for `extracted_data` and `corrected_data`, relationships between models.
-
-Enums:
-- `UserRole`: customer, employee
-- `RequestStatus`: pending_upload, processing, pending_correction, pending_review, approved, rejected
-- `RequestType`: account_opening
-- `AccountType`: individual, youth, minor
-- `DocumentType`: national_id_front, national_id_back, proof_of_residence, proof_of_income, birth_certificate, guardian_national_id_front, guardian_national_id_back
-- `AutoDecision`: auto_approved, auto_rejected (nullable)
-
-- [ ] **Step 5: Create `backend/app/main.py`**
-
-FastAPI app with CORS (allow all origins for dev), include routers (empty for now), lifespan that creates upload dir.
-
-- [ ] **Step 6: Set up Alembic**
-
-`alembic init alembic`, configure `env.py` to import `Base` and all models, use `Settings.DATABASE_URL`.
-
-- [ ] **Step 7: Write model tests**
-
-```python
-# tests/conftest.py — SQLite in-memory test DB, TestClient fixture, override get_db
-# tests/test_models.py
-def test_create_user()         # create customer, assert fields
-def test_create_request()      # create request with sub_type, assert status=pending_upload
-def test_create_document()     # create document linked to request, assert extracted_data stores JSONB
-def test_create_validation()   # create validation_result, assert passed field
-```
-
-- [ ] **Step 8: Run tests to verify they pass**
-
-Run: `cd backend && pytest tests/test_models.py -v`
-Expected: 4 PASS
-
-- [ ] **Step 9: Generate initial migration and verify**
-
-Run: `cd backend && alembic revision --autogenerate -m "initial models"` then `alembic upgrade head`
-Expected: Migration created, tables exist in DB
-
-- [ ] **Step 10: Commit**
+- [x] **Step 1: Create `requirements.txt`**
+- [x] **Step 2: Create `backend/app/config.py`**
+- [x] **Step 3: Create `backend/app/database.py`**
+- [x] **Step 4: Create ORM models**
+- [x] **Step 5: Create `backend/app/main.py`**
+- [x] **Step 6: Set up Alembic**
+- [x] **Step 7: Write model tests**
+- [x] **Step 8: Run tests to verify they pass**
+- [x] **Step 9: Generate initial migration and verify**
+- [x] **Step 10: Commit**
 
 ```bash
 git add -A
