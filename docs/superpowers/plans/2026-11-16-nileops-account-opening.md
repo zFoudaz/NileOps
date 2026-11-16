@@ -339,55 +339,16 @@ git commit -m "feat: customer corrections and employee review endpoints"
 - Consumes: Backend auth API (`/api/auth/*`)
 - Produces: `useAuth()` hook (login, register, logout, user, isAuthenticated, role), `ProtectedRoute` component, `api` Axios instance with JWT interceptor, `AppLayout` with header + role-based sidebar
 
-- [ ] **Step 1: Initialize React project**
-
-Run: `npm create vite@latest frontend -- --template react-ts`, install deps: `tailwindcss`, `@tailwindcss/vite`, `react-router-dom`, `axios`, `lucide-react`. Set up shadcn/ui with `npx shadcn@latest init`.
-
-- [ ] **Step 2: Add shadcn components**
-
-Run: `npx shadcn@latest add button card input label form table badge dialog select tabs toast dropdown-menu separator`
-
-- [ ] **Step 3: Create TypeScript types in `types/index.ts`**
-
-Interfaces for: `User`, `Token`, `BankRequest`, `Document`, `ValidationResult`, `ExtractedData` — matching backend schemas.
-
-- [ ] **Step 4: Create API client in `lib/api.ts`**
-
-Axios instance with `baseURL: "http://localhost:8000/api"`. Request interceptor adds `Authorization: Bearer <token>` from localStorage. Response interceptor handles 401 → redirect to login.
-
-- [ ] **Step 5: Create auth context in `hooks/useAuth.ts`**
-
-React context + provider: `login(email, password)`, `register(name, email, password)`, `logout()`, exposes `user`, `isAuthenticated`, `role`. Stores JWT in localStorage, decodes user info from `/auth/me` on mount.
-
-- [ ] **Step 6: Create layout components**
-
-`AppLayout.tsx` — header with app name + user dropdown (logout), sidebar with navigation links based on role (customer: "طلباتي", "طلب جديد" / employee: "الطلبات"). `ProtectedRoute.tsx` — redirects to login if not authenticated, shows 403 if wrong role.
-
-- [ ] **Step 7: Create Login + Register pages**
-
-`LoginPage.tsx` — email + password form, calls `login()`, redirects to dashboard. `RegisterPage.tsx` — name + email + password form, calls `register()`, redirects to dashboard. Both use shadcn form components, show error toasts.
-
-- [ ] **Step 8: Set up routing in `App.tsx`**
-
-```
-/login → LoginPage
-/register → RegisterPage
-/dashboard → ProtectedRoute(customer) → CustomerDashboard
-/requests/new → ProtectedRoute(customer) → NewRequestPage
-/requests/:id/upload → ProtectedRoute(customer) → UploadDocumentsPage
-/requests/:id/review → ProtectedRoute(customer) → ReviewDataPage
-/requests/:id → ProtectedRoute(customer) → RequestStatusPage
-/employee → ProtectedRoute(employee) → EmployeeDashboard
-/employee/requests/:id → ProtectedRoute(employee) → EmployeeRequestDetail
-```
-
-- [ ] **Step 9: Verify manually**
-
-Run backend: `cd backend && uvicorn app.main:app --reload`
-Run frontend: `cd frontend && npm run dev`
-Test: register a customer, login, see dashboard (empty). Seed employee, login as employee, see employee dashboard (empty).
-
-- [ ] **Step 10: Commit**
+- [x] **Step 1: Initialize React project**
+- [x] **Step 2: Add shadcn components**
+- [x] **Step 3: Create TypeScript types in `types/index.ts`**
+- [x] **Step 4: Create API client in `lib/api.ts`**
+- [x] **Step 5: Create auth context in `hooks/useAuth.ts`**
+- [x] **Step 6: Create layout components**
+- [x] **Step 7: Create Login + Register pages**
+- [x] **Step 8: Set up routing in `App.tsx`**
+- [x] **Step 9: Verify manually**
+- [x] **Step 10: Commit**
 
 ```bash
 git add -A
