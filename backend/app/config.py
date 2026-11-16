@@ -12,6 +12,7 @@ class Settings(BaseSettings):
     OCR_MODEL: str = "qwen3.5:4b"
     PARSER_PROVIDER: str = "ollama"
     PARSER_MODEL: str = "qwen3.5:4b"
+    OPENAI_API_KEY: str = ""
     UPLOAD_DIR: str = "uploads"
 
     model_config = SettingsConfigDict(

@@ -29,6 +29,9 @@ def create_chat_model(provider: str, model_name: str, **kwargs: Any) -> BaseChat
                 "OpenAI provider requested but `langchain-openai` is not installed. "
                 "Install it using `pip install langchain-openai`."
             ) from exc
+        api_key = kwargs.pop("api_key", settings.OPENAI_API_KEY) or None
+        if api_key:
+            return ChatOpenAI(model=model_name, api_key=api_key, **kwargs)
         return ChatOpenAI(model=model_name, **kwargs)
     else:
         raise ValueError(f"Unsupported LLM provider: {provider}")

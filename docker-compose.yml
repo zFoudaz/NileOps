@@ -36,6 +36,7 @@ services:
       - OCR_MODEL=${OCR_MODEL:-qwen3.5:4b}
       - PARSER_PROVIDER=${PARSER_PROVIDER:-ollama}
       - PARSER_MODEL=${PARSER_MODEL:-qwen3.5:4b}
+      - OPENAI_API_KEY=${OPENAI_API_KEY:-}
       - UPLOAD_DIR=uploads
       - DEFAULT_EMPLOYEE_NAME=${DEFAULT_EMPLOYEE_NAME:-أحمد فؤاد}
       - DEFAULT_EMPLOYEE_EMAIL=${DEFAULT_EMPLOYEE_EMAIL:-employee@nileops.com}
