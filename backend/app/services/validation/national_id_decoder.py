@@ -50,7 +50,8 @@ def decode_national_id(national_id: str) -> NationalIdInfo:
     - Century (digit 0): '2' -> 1900-1999, '3' -> 2000-2099
     - Date of Birth (digits 1-6): YYMMDD
     - Governorate code (digits 7-8): 2-digit code mapping to Egyptian governorate
-    - Serial sequence (digits 9-13): gender parity determined by odd=male, even=female
+    - Serial sequence (digits 9-12): digit 12 determines gender (odd=male, even=female)
+    - Check digit (digit 13)
     """
     if not national_id or not isinstance(national_id, str):
         return NationalIdInfo(
@@ -58,7 +59,7 @@ def decode_national_id(national_id: str) -> NationalIdInfo:
             error="National ID must be a non-empty string",
         )
 
-    national_id = national_id.strip()
+    national_id = national_id.strip().translate(str.maketrans("٠١٢٣٤٥٦٧٨٩", "0123456789"))
 
     if len(national_id) != 14 or not national_id.isdigit():
         return NationalIdInfo(
@@ -92,6 +93,12 @@ def decode_national_id(national_id: str) -> NationalIdInfo:
             error=f"Invalid birth date: year={full_year}, month={mm}, day={dd}",
         )
 
+    if dob > date.today():
+        return NationalIdInfo(
+            is_valid=False,
+            error="Birth date cannot be in the future",
+        )
+
     # Validate governorate code
     gov_code = national_id[7:9]
     governorate = GOVERNORATES.get(gov_code)
@@ -102,9 +109,9 @@ def decode_national_id(national_id: str) -> NationalIdInfo:
         )
 
     # Gender determination:
-    # In Egyptian national ID structure and test fixtures,
-    # the terminal serial digit indicates gender: odd -> male, even -> female.
-    gender_digit = int(national_id[13])
+    # Digit 13 in 1-based counting (index 12, the last digit of the 4-digit serial digits 9..12)
+    # determines gender: odd -> male, even -> female.
+    gender_digit = int(national_id[12])
     gender = "male" if gender_digit % 2 != 0 else "female"
 
     return NationalIdInfo(
