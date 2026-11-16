@@ -264,51 +264,12 @@ git commit -m "feat: Egyptian national ID decoder with DOB, gender, governorate 
 - Consumes: `Document` model, `Settings` (OLLAMA_BASE_URL, OLLAMA_MODEL), `DocumentType` enum
 - Produces: `extract_document_fields(image_path: str, document_type: DocumentType) -> dict` — returns extracted fields as dict. `process_request_documents(request_id: UUID, db: Session)` — processes all OCR-required documents for a request.
 
-- [ ] **Step 1: Create prompt templates in `prompts.py`**
-
-One prompt per document type. Each instructs the model to extract specific fields as JSON. Example for `national_id_front`:
-
-```python
-PROMPTS = {
-    DocumentType.national_id_front: """Extract the following fields from this Egyptian National ID card (front side) as JSON:
-- name (Arabic full name)
-- national_id (14-digit number)
-- address (Arabic)
-
-Return ONLY valid JSON: {"name": "...", "national_id": "...", "address": "..."}""",
-    DocumentType.national_id_back: """...""",  # expiry_date, job, marital_status
-    DocumentType.proof_of_residence: """...""",  # holder_name, address
-    DocumentType.birth_certificate: """...""",  # child_name, date_of_birth, father_name, mother_name, father_national_id
-    DocumentType.guardian_national_id_front: # same as national_id_front
-    DocumentType.guardian_national_id_back: # same as national_id_back
-}
-```
-
-- [ ] **Step 2: Implement `extractor.py`**
-
-Use `ChatOllama` from `langchain_ollama` with vision support. `extract_document_fields()` loads the image, sends it with the prompt via LangChain's `HumanMessage` with image content, parses the JSON response. `process_request_documents()` iterates documents where `ocr_required=True` and `ocr_completed=False`, calls `extract_document_fields`, stores result in `extracted_data`, marks `ocr_completed=True`.
-
-- [ ] **Step 3: Add process endpoint to documents route**
-
-`POST /api/requests/{id}/process` — validates all required docs are uploaded, launches `process_request_documents` as a FastAPI `BackgroundTask`, sets request status to `processing`, returns 202 Accepted.
-
-- [ ] **Step 4: Write OCR tests (mocked model)**
-
-```python
-# Mock the ChatOllama to return known JSON responses
-def test_extract_national_id_front()    # mock returns valid JSON → fields parsed correctly
-def test_extract_returns_invalid_json() # mock returns garbage → raises/handles gracefully
-def test_process_request_documents()    # mock OCR, process 2 docs → both get extracted_data
-def test_process_skips_non_ocr_docs()   # proof_of_income → not processed
-def test_process_endpoint_returns_202() # POST /process → 202, status becomes processing
-```
-
-- [ ] **Step 5: Run tests**
-
-Run: `cd backend && pytest tests/test_ocr_service.py -v`
-Expected: 5 PASS
-
-- [ ] **Step 6: Commit**
+- [x] **Step 1: Create prompt templates in `prompts.py`**
+- [x] **Step 2: Implement `extractor.py`**
+- [x] **Step 3: Add process endpoint to documents route**
+- [x] **Step 4: Write OCR tests (mocked model)**
+- [x] **Step 5: Run tests**
+- [x] **Step 6: Commit**
 
 ```bash
 git add -A
