@@ -28,7 +28,11 @@ ENV/
 
 # Environment variables
 .env
-.env.local
+.env.*
+!.env.example
+
+# Local docker-compose configurations
+docker-compose.*.yml
 
 # Testing
 .pytest_cache/

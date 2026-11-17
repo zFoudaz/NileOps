@@ -20,7 +20,7 @@ def create_chat_model(provider: str, model_name: str, **kwargs: Any) -> BaseChat
 
     if provider_clean == "ollama":
         base_url = kwargs.pop("base_url", None) or settings.OLLAMA_BASE_URL
-        return ChatOllama(base_url=base_url, model=model_name, **kwargs)
+        return ChatOllama(base_url=base_url, model=model_name, reasoning=False, **kwargs)
     elif provider_clean == "openai":
         try:
             from langchain_openai import ChatOpenAI
