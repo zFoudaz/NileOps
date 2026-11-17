@@ -1,6 +1,6 @@
 import React from 'react';
 import { useNavigate } from 'react-router-dom';
-import { Calendar, ChevronLeft, ShieldCheck, ShieldAlert, FileText } from 'lucide-react';
+import { Calendar, ChevronLeft, ShieldCheck, ShieldAlert, FileText, Trash2 } from 'lucide-react';
 import { Card, CardContent } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import type { BankRequest } from '@/types';
@@ -9,9 +9,10 @@ import { ACCOUNT_TYPES_INFO, STATUS_LABELS, STATUS_VARIANTS } from '@/lib/consta
 interface RequestCardProps {
   request: BankRequest;
   onClick?: () => void;
+  onDelete?: (e: React.MouseEvent, request: BankRequest) => void;
 }
 
-export const RequestCard: React.FC<RequestCardProps> = ({ request, onClick }) => {
+export const RequestCard: React.FC<RequestCardProps> = ({ request, onClick, onDelete }) => {
   const navigate = useNavigate();
 
   const shortId = request.id ? request.id.slice(0, 8).toUpperCase() : '';
@@ -66,6 +67,20 @@ export const RequestCard: React.FC<RequestCardProps> = ({ request, onClick }) =>
             <Badge variant={statusVariant} className="text-xs font-medium py-1 px-2.5">
               {statusLabel}
             </Badge>
+            {onDelete && request.status !== 'processing' && (
+              <button
+                type="button"
+                onClick={(e) => {
+                  e.stopPropagation();
+                  onDelete(e, request);
+                }}
+                title="حذف الطلب"
+                className="p-1.5 text-slate-400 hover:text-rose-600 hover:bg-rose-50 rounded-md transition-colors"
+              >
+                <Trash2 className="h-4 w-4" />
+                <span className="sr-only">حذف الطلب</span>
+              </button>
+            )}
           </div>
         </div>
 

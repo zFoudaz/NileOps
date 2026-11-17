@@ -150,3 +150,89 @@ def test_get_nonexistent_request(client):
     fake_id = str(uuid.uuid4())
     resp = client.get(f"/api/requests/{fake_id}", headers={"Authorization": f"Bearer {token}"})
     assert resp.status_code == 404
+
+
+def test_delete_own_request(client, tmp_path, monkeypatch):
+    """DELETE /api/requests/{id} -> 204, request and files deleted."""
+    from app.config import settings
+    monkeypatch.setattr(settings, "UPLOAD_DIR", str(tmp_path))
+
+    token = get_auth_token(client, email="del_owner@example.com")
+    headers = {"Authorization": f"Bearer {token}"}
+
+    create_resp = client.post(
+        "/api/requests/",
+        json={"request_type": "account_opening", "sub_type": "individual"},
+        headers=headers,
+    )
+    req_id = create_resp.json()["id"]
+
+    # Create dummy upload directory
+    req_upload_dir = tmp_path / req_id
+    req_upload_dir.mkdir(parents=True, exist_ok=True)
+    dummy_file = req_upload_dir / "test.png"
+    dummy_file.write_text("dummy")
+
+    del_resp = client.delete(f"/api/requests/{req_id}", headers=headers)
+    assert del_resp.status_code == 204
+
+    # Verify request is gone from DB
+    get_resp = client.get(f"/api/requests/{req_id}", headers=headers)
+    assert get_resp.status_code == 404
+
+    # Verify files were cleaned up
+    assert not req_upload_dir.exists()
+
+
+def test_delete_other_customer_request(client):
+    """DELETE /api/requests/{id} for another customer's request -> 404."""
+    token1 = get_auth_token(client, email="del_owner2@example.com")
+    token2 = get_auth_token(client, email="del_intruder@example.com")
+
+    create_resp = client.post(
+        "/api/requests/",
+        json={"request_type": "account_opening", "sub_type": "individual"},
+        headers={"Authorization": f"Bearer {token1}"},
+    )
+    req_id = create_resp.json()["id"]
+
+    del_resp = client.delete(f"/api/requests/{req_id}", headers={"Authorization": f"Bearer {token2}"})
+    assert del_resp.status_code == 404
+
+    # Verify request is still intact for owner
+    get_resp = client.get(f"/api/requests/{req_id}", headers={"Authorization": f"Bearer {token1}"})
+    assert get_resp.status_code == 200
+
+
+def test_delete_processing_request(client, db_session):
+    """DELETE /api/requests/{id} when status=processing -> 400."""
+    from app.models.request import Request
+    from app.models.enums import RequestStatus
+
+    token = get_auth_token(client, email="del_proc@example.com")
+    headers = {"Authorization": f"Bearer {token}"}
+
+    create_resp = client.post(
+        "/api/requests/",
+        json={"request_type": "account_opening", "sub_type": "individual"},
+        headers=headers,
+    )
+    req_id = create_resp.json()["id"]
+
+    # Manually transition to PROCESSING
+    req = db_session.query(Request).filter(Request.id == req_id).first()
+    req.status = RequestStatus.PROCESSING
+    db_session.commit()
+
+    del_resp = client.delete(f"/api/requests/{req_id}", headers=headers)
+    assert del_resp.status_code == 400
+    assert "Cannot delete request while it is processing" in del_resp.json()["detail"]
+
+
+def test_delete_nonexistent_request(client):
+    """DELETE /api/requests/{id} with non-existent UUID -> 404."""
+    token = get_auth_token(client, email="del_notfound@example.com")
+    fake_id = str(uuid.uuid4())
+    resp = client.delete(f"/api/requests/{fake_id}", headers={"Authorization": f"Bearer {token}"})
+    assert resp.status_code == 404
+

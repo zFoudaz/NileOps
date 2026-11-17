@@ -84,6 +84,22 @@ export function useRequests() {
     }
   }, []);
 
+  const deleteRequest = useCallback(async (id: string): Promise<void> => {
+    setIsLoading(true);
+    setError(null);
+    try {
+      await api.delete(`/requests/${id}`);
+    } catch (err: unknown) {
+      const message =
+        (err as { response?: { data?: { detail?: string } } })?.response?.data
+          ?.detail || 'فشل في حذف الطلب';
+      setError(message);
+      throw new Error(message);
+    } finally {
+      setIsLoading(false);
+    }
+  }, []);
+
   const uploadDocument = useCallback(
     async (
       requestId: string,
@@ -303,6 +319,7 @@ export function useRequests() {
     createRequest,
     getMyRequests,
     getRequest,
+    deleteRequest,
     uploadDocument,
     processDocuments,
     getExtractedData,

@@ -1,9 +1,12 @@
+import shutil
 import uuid
+from pathlib import Path
 from typing import List
 from fastapi import APIRouter, Depends, HTTPException, status
 from sqlalchemy.orm import Session
 
 from app.api.deps import get_current_user, get_db, require_role
+from app.config import settings
 from app.models.document import Document
 from app.models.enums import RequestStatus, UserRole
 from app.models.request import Request
@@ -279,3 +282,43 @@ def submit_request_for_review(
     db.commit()
     db.refresh(req)
     return req
+
+
+@router.delete(
+    "/{id}",
+    status_code=status.HTTP_204_NO_CONTENT,
+    summary="Delete a customer request",
+)
+@router.delete(
+    "/{id}/",
+    status_code=status.HTTP_204_NO_CONTENT,
+    summary="Delete a customer request",
+    include_in_schema=False,
+)
+def delete_request(
+    id: uuid.UUID,
+    current_user: User = Depends(require_role(UserRole.CUSTOMER)),
+    db: Session = Depends(get_db),
+) -> None:
+    req = db.query(Request).filter(Request.id == id).first()
+    if not req or req.customer_id != current_user.id:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail="Request not found",
+        )
+
+    if req.status == RequestStatus.PROCESSING:
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail="Cannot delete request while it is processing",
+        )
+
+    # Clean up uploaded physical files for this request
+    upload_dir = Path(settings.UPLOAD_DIR) / str(req.id)
+    if upload_dir.exists() and upload_dir.is_dir():
+        shutil.rmtree(upload_dir, ignore_errors=True)
+
+    db.delete(req)
+    db.commit()
+    return None
+

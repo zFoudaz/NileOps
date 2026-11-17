@@ -1,5 +1,5 @@
 import React, { useEffect, useState, useCallback } from 'react';
-import { useParams, Link } from 'react-router-dom';
+import { useParams, Link, useNavigate } from 'react-router-dom';
 import {
   CheckCircle2,
   XCircle,
@@ -13,10 +13,12 @@ import {
   Upload,
   AlertCircle,
   Loader2,
+  Trash2,
 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
+import { Dialog } from '@/components/ui/dialog';
 import { ValidationBadge } from '@/components/requests/ValidationBadge';
 import { useRequests } from '@/hooks/useRequests';
 import { useToast } from '@/hooks/useToast';
@@ -39,13 +41,36 @@ interface TimelineStep {
 
 export const RequestStatusPage: React.FC = () => {
   const { id } = useParams<{ id: string }>();
-  const { getRequest, isLoading: hookLoading } = useRequests();
+  const navigate = useNavigate();
+  const { getRequest, deleteRequest, isLoading: hookLoading } = useRequests();
   const { toast } = useToast();
 
   const [request, setRequest] = useState<BankRequest | null>(null);
   const [loading, setLoading] = useState<boolean>(true);
   const [previewImage, setPreviewImage] = useState<string | null>(null);
   const [failedImages, setFailedImages] = useState<Record<string, boolean>>({});
+  const [isDeleteDialogOpen, setIsDeleteDialogOpen] = useState<boolean>(false);
+  const [isDeleting, setIsDeleting] = useState<boolean>(false);
+
+  const handleDelete = async () => {
+    if (!request) return;
+    try {
+      setIsDeleting(true);
+      await deleteRequest(request.id);
+      toast({
+        title: 'تم حذف الطلب بنجاح',
+        description: `تم حذف الطلب وكافة المستندات المرتبطة به نهائياً.`,
+      });
+      navigate('/dashboard');
+    } catch (err: unknown) {
+      toast({
+        variant: 'destructive',
+        title: 'خطأ في عملية الحذف',
+        description: err instanceof Error ? err.message : 'تعذر حذف الطلب',
+      });
+      setIsDeleting(false);
+    }
+  };
 
   const fetchDetails = useCallback(async () => {
     if (!id) return;
@@ -243,11 +268,24 @@ export const RequestStatusPage: React.FC = () => {
         </div>
 
         <div className="flex items-center gap-2">
+          {request.status !== 'processing' && (
+            <Button
+              variant="outline"
+              size="sm"
+              onClick={() => setIsDeleteDialogOpen(true)}
+              disabled={hookLoading || isDeleting}
+              className="gap-1.5 text-xs text-rose-600 border-rose-200 hover:bg-rose-50 hover:text-rose-700"
+            >
+              <Trash2 className="h-3.5 w-3.5" />
+              حذف الطلب
+            </Button>
+          )}
+
           <Button
             variant="outline"
             size="sm"
             onClick={fetchDetails}
-            disabled={hookLoading}
+            disabled={hookLoading || isDeleting}
             className="gap-1.5 text-xs text-slate-600"
           >
             <RefreshCw className={`h-3.5 w-3.5 ${hookLoading ? 'animate-spin' : ''}`} />
@@ -648,6 +686,52 @@ export const RequestStatusPage: React.FC = () => {
           </div>
         </div>
       )}
+      {/* Delete Confirmation Dialog */}
+      <Dialog
+        open={isDeleteDialogOpen}
+        onClose={() => !isDeleting && setIsDeleteDialogOpen(false)}
+        title="تأكيد حذف الطلب"
+        description="يرجى الانتباه إلى أن هذا الإجراء نهائي ولا يمكن التراجع عنه."
+      >
+        <div className="space-y-4 pt-2">
+          <div className="rounded-lg bg-rose-50 border border-rose-200 p-3 text-xs text-rose-900 leading-relaxed">
+            هل أنت متأكد من رغبتك في حذف هذا الطلب{' '}
+            <strong className="font-mono font-bold">#{shortId}</strong>؟ سيتم حذف جميع
+            الملفات المرفوعة والمستندات والبيانات المستخرجة المرتبطة به نهائياً.
+          </div>
+
+          <div className="flex items-center justify-end gap-2 pt-3 border-t border-slate-100">
+            <Button
+              type="button"
+              variant="outline"
+              onClick={() => setIsDeleteDialogOpen(false)}
+              disabled={isDeleting}
+              className="text-xs"
+            >
+              إلغاء
+            </Button>
+            <Button
+              type="button"
+              variant="destructive"
+              onClick={handleDelete}
+              disabled={isDeleting}
+              className="text-xs gap-1.5"
+            >
+              {isDeleting ? (
+                <>
+                  <Loader2 className="h-3.5 w-3.5 animate-spin" />
+                  <span>جاري الحذف...</span>
+                </>
+              ) : (
+                <>
+                  <Trash2 className="h-3.5 w-3.5" />
+                  <span>تأكيد الحذف نهائياً</span>
+                </>
+              )}
+            </Button>
+          </div>
+        </div>
+      </Dialog>
     </div>
   );
 };

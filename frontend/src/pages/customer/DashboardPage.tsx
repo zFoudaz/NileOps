@@ -10,19 +10,25 @@ import {
   RefreshCw,
   Search,
   Filter,
+  Trash2,
 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent } from '@/components/ui/card';
 import { Input } from '@/components/ui/input';
+import { Dialog } from '@/components/ui/dialog';
 import { RequestCard } from '@/components/requests/RequestCard';
 import { useRequests } from '@/hooks/useRequests';
+import { useToast } from '@/hooks/useToast';
 import type { BankRequest } from '@/types';
 
 export const DashboardPage: React.FC = () => {
-  const { getMyRequests, isLoading, error } = useRequests();
+  const { getMyRequests, deleteRequest, isLoading, error } = useRequests();
+  const { toast } = useToast();
   const [requests, setRequests] = useState<BankRequest[]>([]);
   const [searchQuery, setSearchQuery] = useState('');
   const [statusFilter, setStatusFilter] = useState<'all' | 'active' | 'approved' | 'rejected'>('all');
+  const [requestToDelete, setRequestToDelete] = useState<BankRequest | null>(null);
+  const [isDeleting, setIsDeleting] = useState<boolean>(false);
 
   const fetchRequests = useCallback(async () => {
     try {
@@ -32,6 +38,32 @@ export const DashboardPage: React.FC = () => {
       // Error handled by hook
     }
   }, [getMyRequests]);
+
+  const handleDeleteClick = (_e: React.MouseEvent, req: BankRequest) => {
+    setRequestToDelete(req);
+  };
+
+  const handleConfirmDelete = async () => {
+    if (!requestToDelete) return;
+    try {
+      setIsDeleting(true);
+      await deleteRequest(requestToDelete.id);
+      setRequests((prev) => prev.filter((r) => r.id !== requestToDelete.id));
+      toast({
+        title: 'تم حذف الطلب بنجاح',
+        description: `تم حذف الطلب رقم #${requestToDelete.id.slice(0, 8).toUpperCase()} وكافة المستندات المرفقة به.`,
+      });
+      setRequestToDelete(null);
+    } catch (err: unknown) {
+      toast({
+        variant: 'destructive',
+        title: 'خطأ في عملية الحذف',
+        description: err instanceof Error ? err.message : 'تعذر حذف الطلب',
+      });
+    } finally {
+      setIsDeleting(false);
+    }
+  };
 
   useEffect(() => {
     let ignore = false;
@@ -273,10 +305,59 @@ export const DashboardPage: React.FC = () => {
       ) : (
         <div className="space-y-3">
           {filteredRequests.map((req) => (
-            <RequestCard key={req.id} request={req} />
+            <RequestCard key={req.id} request={req} onDelete={handleDeleteClick} />
           ))}
         </div>
       )}
+
+      {/* Delete Confirmation Dialog */}
+      <Dialog
+        open={!!requestToDelete}
+        onClose={() => !isDeleting && setRequestToDelete(null)}
+        title="تأكيد حذف الطلب"
+        description="يرجى الانتباه إلى أن هذا الإجراء نهائي ولا يمكن التراجع عنه."
+      >
+        <div className="space-y-4 pt-2">
+          <div className="rounded-lg bg-rose-50 border border-rose-200 p-3 text-xs text-rose-900 leading-relaxed">
+            هل أنت متأكد من رغبتك في حذف هذا الطلب{' '}
+            <strong className="font-mono font-bold">
+              #{requestToDelete?.id.slice(0, 8).toUpperCase()}
+            </strong>
+            ؟ سيتم حذف جميع الملفات والبيانات المسحوبة والمستندات المرتبطة به نهائياً من الخوادم.
+          </div>
+
+          <div className="flex items-center justify-end gap-2 pt-3 border-t border-slate-100">
+            <Button
+              type="button"
+              variant="outline"
+              onClick={() => setRequestToDelete(null)}
+              disabled={isDeleting}
+              className="text-xs"
+            >
+              إلغاء
+            </Button>
+            <Button
+              type="button"
+              variant="destructive"
+              onClick={handleConfirmDelete}
+              disabled={isDeleting}
+              className="text-xs gap-1.5"
+            >
+              {isDeleting ? (
+                <>
+                  <Loader2 className="h-3.5 w-3.5 animate-spin" />
+                  <span>جاري الحذف...</span>
+                </>
+              ) : (
+                <>
+                  <Trash2 className="h-3.5 w-3.5" />
+                  <span>تأكيد الحذف نهائياً</span>
+                </>
+              )}
+            </Button>
+          </div>
+        </div>
+      </Dialog>
     </div>
   );
 };
