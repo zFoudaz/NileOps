@@ -2,6 +2,7 @@ import { useState, useCallback } from 'react';
 import api from '@/lib/api';
 import type {
   AccountType,
+  BankAccount,
   BankRequest,
   Document,
   DocumentType,
@@ -313,11 +314,21 @@ export function useRequests() {
     []
   );
 
+  const getMyAccounts = useCallback(async (): Promise<BankAccount[]> => {
+    try {
+      const response = await api.get<BankAccount[]>('/accounts/me');
+      return response.data;
+    } catch {
+      return [];
+    }
+  }, []);
+
   return {
     isLoading,
     error,
     createRequest,
     getMyRequests,
+    getMyAccounts,
     getRequest,
     deleteRequest,
     uploadDocument,

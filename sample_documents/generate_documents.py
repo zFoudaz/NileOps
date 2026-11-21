@@ -721,6 +721,84 @@ def generate_birth_certificate(
     print(f"Generated: {output_path}")
 
 
+# -------------------------------------------------------------
+# 6. Guarantee Proof (Salary Transfer / Investment Certificate Pledge)
+# -------------------------------------------------------------
+def generate_guarantee_proof(
+    output_path: str = "sample_documents/card_issuance/credit/guarantee_proof.png",
+    holder_name: str = "محمد محمد أحمد حسنين",
+    national_id: str = "29810150101235",
+    certificate_number: str = "CD-2026-884120",
+    amount: str = "100,000 ج.م",
+):
+    os.makedirs(os.path.dirname(output_path), exist_ok=True)
+    width, height = 900, 1180
+    img = Image.new("RGB", (width, height), color=(255, 255, 255))
+    draw = ImageDraw.Draw(img)
+
+    # Outer formal gold/navy border
+    draw.rectangle([22, 22, width - 22, height - 22], outline=(30, 58, 138), width=4)
+    draw.rectangle([30, 30, width - 30, height - 30], outline=(202, 138, 4), width=2)
+
+    # Header band
+    draw.rectangle([30, 30, width - 30, 155], fill=(30, 58, 138))
+    draw.text((width - 55, 72), ar("بنك نايل أوبس — إدارة البطاقات والائتمان"), font=get_font(FONT_BOLD, 25), fill=(255, 255, 255), anchor="rm")
+    draw.text((width - 55, 115), "NileOps Bank - Credit & Collateral Department", font=get_font(FONT_BOLD, 16), fill=(191, 219, 254), anchor="rm")
+
+    # Document Title
+    draw.rounded_rectangle([180, 185, width - 180, 245], radius=12, fill=(254, 249, 195), outline=(202, 138, 4), width=2)
+    draw.text((width // 2, 215), ar("شهادة ضمان مالي لإصدار بطاقة ائتمانية"), font=get_font(FONT_BOLD, 25), fill=(113, 63, 18), anchor="mm")
+
+    draw.text((65, 275), ar("التاريخ: 2026/11/10"), font=get_font(FONT_BOLD, 16), fill=(71, 85, 105), anchor="lm")
+    draw.text((width - 65, 275), ar(f"مرجع الضمان: {certificate_number}"), font=get_font(FONT_BOLD, 16), fill=(30, 58, 138), anchor="rm")
+
+    # Customer & Guarantee Info Box
+    draw.rounded_rectangle([55, 315, width - 55, 670], radius=14, fill=(248, 250, 252), outline=(203, 213, 225), width=2)
+    draw.rectangle([55, 315, width - 55, 365], fill=(226, 232, 240))
+    draw.text((width - 80, 340), ar("بيانات العميل والضمان المقدم"), font=get_font(FONT_BOLD, 21), fill=(15, 23, 42), anchor="rm")
+
+    rows = [
+        ("اسم العميل بالكامل:", holder_name),
+        ("الرقم القومي:", national_id),
+        ("نوع الضمان:", "شهادة استثمار بلاتينية مجنّبة / تعهد تحويل راتب"),
+        ("رقم الشهادة / الوعاء الادخاري:", certificate_number),
+        ("قيمة الضمان الإجمالية:", amount),
+        ("تاريخ الاستحقاق:", "2029/11/10"),
+    ]
+    ry = 405
+    for lbl, val in rows:
+        draw.text((width - 80, ry), ar(lbl), font=get_font(FONT_BOLD, 18), fill=(71, 85, 105), anchor="rm")
+        is_ascii = all(ord(c) < 128 for c in val)
+        draw.text(
+            (width - 330, ry),
+            val if is_ascii else ar(val),
+            font=get_font(FONT_MONO if is_ascii else FONT_BOLD, 22 if is_ascii else 20),
+            fill=(15, 23, 42),
+            anchor="rm",
+        )
+        ry += 44
+
+    # Undertaking Text
+    draw.rounded_rectangle([55, 705, width - 55, 920], radius=12, fill=(239, 246, 255), outline=(147, 197, 253), width=2)
+    draw.text((width - 80, 740), ar("إقرار وتأكيد التحفظ على الضمان:"), font=get_font(FONT_BOLD, 20), fill=(30, 58, 138), anchor="rm")
+    draw.text((width - 80, 790), ar("نشهد بأن الشهادة الادخارية الموضحة أعلاه سارية ومملوكة للعميل المذكور"), font=get_font(FONT_REGULAR, 18), fill=(30, 41, 59), anchor="rm")
+    draw.text((width - 80, 830), ar("وتصلح كضمان مالي معتمد لإصدار بطاقة ائتمانية وفقاً لسياسات البنك المركزي"), font=get_font(FONT_REGULAR, 18), fill=(30, 41, 59), anchor="rm")
+    draw.text((width - 80, 870), ar("المصري وتعليمات إدارة المخاطر والائتمان."), font=get_font(FONT_REGULAR, 18), fill=(30, 41, 59), anchor="rm")
+
+    # Signatures & Stamp
+    draw.text((width - 170, 995), ar("توقيع مدير الفرع / الموارد البشرية"), font=get_font(FONT_BOLD, 18), fill=(15, 23, 42), anchor="mm")
+    draw.text((width - 170, 1045), ar("أ. كريم عبد العزيز"), font=get_font(FONT_BOLD, 21), fill=(30, 58, 138), anchor="mm")
+
+    stamp_cx, stamp_cy = 230, 1030
+    draw.ellipse([stamp_cx - 95, stamp_cy - 60, stamp_cx + 95, stamp_cy + 60], outline=(30, 58, 138), width=4)
+    draw.ellipse([stamp_cx - 85, stamp_cy - 50, stamp_cx + 85, stamp_cy + 50], outline=(202, 138, 4), width=1)
+    draw.text((stamp_cx, stamp_cy - 18), ar("إدارة الضمانات والائتمان"), font=get_font(FONT_BOLD, 14), fill=(30, 58, 138), anchor="mm")
+    draw.text((stamp_cx, stamp_cy + 14), ar("معتمد وساري المفعول"), font=get_font(FONT_BOLD, 16), fill=(30, 58, 138), anchor="mm")
+
+    img.save(output_path, quality=95)
+    print(f"Generated: {output_path}")
+
+
 if __name__ == "__main__":
     # 1. Legacy root sample documents (kept for integration tests)
     generate_id_front("sample_documents/national_id_front.png")
@@ -793,5 +871,44 @@ if __name__ == "__main__":
         mrz_line2="8507203M3107197EGY<<<<<<<<<<<4",
         mrz_line3="ALI<<TAREK<HASSAN<IBRAHIM<<<<<<<",
     )
+
+    # 5. Card Issuance -> Prepaid (National ID front + back only)
+    prepaid_dir = "sample_documents/card_issuance/prepaid"
+    generate_id_front(
+        output_path=f"{prepaid_dir}/national_id_front.png",
+        first_name="كريم",
+        rest_name="سامي إبراهيم منصور",
+        address_line1="١٠ شارع مكرم عبيد - مدينة نصر",
+        address_line2="قسم مدينة نصر - محافظة القاهرة",
+        national_id="30208200101531",
+        serial="مسلسل: ب / ٤١٩٠٢٨٣٧",
+    )
+    generate_id_back(
+        output_path=f"{prepaid_dir}/national_id_back.png",
+        job="مصمم جرافيك",
+        employer="عمل حر",
+        marital_status="أعزب",
+        gender="ذكر",
+        religion="مسلم",
+        expiry_date="2032/08/19",
+        issue_date="2025/08/20",
+        national_id="30208200101531",
+        mrz_line2="0208201M3208195EGY<<<<<<<<<<<2",
+        mrz_line3="MANSOUR<<KARIM<SAMY<IBRAHIM<<<<<",
+    )
+
+    # 6. Card Issuance -> Debit (Matches account_opening/individual NID 29810150101235)
+    debit_dir = "sample_documents/card_issuance/debit"
+    generate_id_front(f"{debit_dir}/national_id_front.png")
+    generate_id_back(f"{debit_dir}/national_id_back.png")
+    generate_proof_of_residence(f"{debit_dir}/proof_of_residence.png")
+
+    # 7. Card Issuance -> Credit (ID front/back + residence + income + guarantee proof)
+    credit_dir = "sample_documents/card_issuance/credit"
+    generate_id_front(f"{credit_dir}/national_id_front.png")
+    generate_id_back(f"{credit_dir}/national_id_back.png")
+    generate_proof_of_residence(f"{credit_dir}/proof_of_residence.png")
+    generate_proof_of_income(f"{credit_dir}/proof_of_income.png")
+    generate_guarantee_proof(f"{credit_dir}/guarantee_proof.png")
 
     print("All sample documents generated successfully!")

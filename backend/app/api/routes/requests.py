@@ -44,6 +44,14 @@ def create_request(
     current_user: User = Depends(require_role(UserRole.CUSTOMER)),
     db: Session = Depends(get_db),
 ) -> Request:
+    handler = get_handler(request_in.request_type)
+    prereq_error = handler.check_prerequisites(current_user, request_in.sub_type, db)
+    if prereq_error:
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail=prereq_error,
+        )
+
     new_request = Request(
         customer_id=current_user.id,
         request_type=request_in.request_type,

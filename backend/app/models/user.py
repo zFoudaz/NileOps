@@ -37,3 +37,8 @@ class User(Base):
         foreign_keys="Request.verified_by",
         back_populates="verifier",
     )
+    bank_accounts = relationship(
+        "BankAccount",
+        back_populates="user",
+        cascade="all, delete-orphan",
+    )

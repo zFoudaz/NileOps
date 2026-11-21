@@ -17,7 +17,7 @@ import { useRequests } from '@/hooks/useRequests';
 import { useToast } from '@/hooks/useToast';
 import type { BankRequest, DocumentType } from '@/types';
 import {
-  ACCOUNT_TYPES_INFO,
+  getSubTypeInfo,
   DOCUMENT_TYPE_LABELS,
   DOCUMENT_TYPE_DESCRIPTIONS,
 } from '@/lib/constants';
@@ -197,12 +197,8 @@ export const UploadDocumentsPage: React.FC = () => {
     );
   }
 
-  // Calculate required docs from account type
-  const accountInfo =
-    ACCOUNT_TYPES_INFO[request.sub_type as keyof typeof ACCOUNT_TYPES_INFO] || {
-      title: request.sub_type,
-      requiredDocs: request.required_documents || [],
-    };
+  // Calculate required docs from sub_type
+  const accountInfo = getSubTypeInfo(request.sub_type);
   const requiredDocs = request.required_documents?.length
     ? request.required_documents
     : accountInfo.requiredDocs;

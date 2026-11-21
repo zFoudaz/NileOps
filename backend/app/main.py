@@ -3,7 +3,7 @@ from pathlib import Path
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.staticfiles import StaticFiles
-from app.api.routes import auth, documents, employee, requests
+from app.api.routes import accounts, auth, documents, employee, requests
 from app.config import settings
 
 
@@ -33,6 +33,7 @@ app.add_middleware(
 
 # API Routers
 app.include_router(auth.router, prefix="/api/auth", tags=["auth"])
+app.include_router(accounts.router, prefix="/api/accounts", tags=["accounts"])
 app.include_router(requests.router, prefix="/api/requests", tags=["requests"])
 app.include_router(documents.router, prefix="/api/requests", tags=["documents"])
 app.include_router(employee.router, prefix="/api/employee", tags=["employee"])

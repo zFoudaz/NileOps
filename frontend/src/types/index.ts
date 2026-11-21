@@ -8,9 +8,11 @@ export type RequestStatus =
   | 'approved'
   | 'rejected';
 
-export type RequestType = 'account_opening';
+export type RequestType = 'account_opening' | 'card_issuance';
 
 export type AccountType = 'individual' | 'youth' | 'minor';
+
+export type CardType = 'prepaid' | 'debit' | 'credit';
 
 export type DocumentType =
   | 'national_id_front'
@@ -19,7 +21,8 @@ export type DocumentType =
   | 'proof_of_income'
   | 'birth_certificate'
   | 'guardian_national_id_front'
-  | 'guardian_national_id_back';
+  | 'guardian_national_id_back'
+  | 'guarantee_proof';
 
 export type AutoDecision = 'auto_approved' | 'auto_rejected';
 
@@ -108,6 +111,19 @@ export interface BankRequest {
   verifier_name?: string | null;
 }
 
+export interface BankAccount {
+  id: string;
+  user_id: string;
+  request_id?: string | null;
+  account_number: string;
+  account_type: string;
+  holder_name: string;
+  national_id?: string | null;
+  address?: string | null;
+  status: string;
+  created_at: string;
+}
+
 export interface RequestCreatePayload {
   request_type?: RequestType;
   sub_type: string;
@@ -120,6 +136,7 @@ export interface SubTypeConfig {
   ageRange: string;
   description: string;
   requiredDocs: DocumentType[];
+  requiresBankAccount?: boolean;
 }
 
 export interface RequestTypeConfig {

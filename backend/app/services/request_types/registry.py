@@ -3,6 +3,7 @@ from typing import Dict, List, Union
 from app.models.enums import RequestType
 from app.services.request_types.account_opening import AccountOpeningHandler
 from app.services.request_types.base import RequestTypeHandler
+from app.services.request_types.card_issuance import CardIssuanceHandler
 
 _REGISTRY: Dict[str, RequestTypeHandler] = {}
 
@@ -35,3 +36,4 @@ def list_handlers() -> List[RequestTypeHandler]:
 
 # Register built-in request types
 register_handler(AccountOpeningHandler())
+register_handler(CardIssuanceHandler())

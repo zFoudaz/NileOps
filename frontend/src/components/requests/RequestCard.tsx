@@ -4,7 +4,7 @@ import { Calendar, ChevronLeft, ShieldCheck, ShieldAlert, FileText, Trash2 } fro
 import { Card, CardContent } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import type { BankRequest } from '@/types';
-import { ACCOUNT_TYPES_INFO, STATUS_LABELS, STATUS_VARIANTS } from '@/lib/constants';
+import { getSubTypeInfo, REQUEST_TYPE_LABELS, STATUS_LABELS, STATUS_VARIANTS } from '@/lib/constants';
 
 interface RequestCardProps {
   request: BankRequest;
@@ -16,11 +16,8 @@ export const RequestCard: React.FC<RequestCardProps> = ({ request, onClick, onDe
   const navigate = useNavigate();
 
   const shortId = request.id ? request.id.slice(0, 8).toUpperCase() : '';
-  const accountInfo =
-    ACCOUNT_TYPES_INFO[request.sub_type as keyof typeof ACCOUNT_TYPES_INFO] || {
-      title: request.sub_type,
-      badge: request.sub_type,
-    };
+  const accountInfo = getSubTypeInfo(request.sub_type);
+  const requestTypeLabel = REQUEST_TYPE_LABELS[request.request_type] || request.request_type;
 
   const statusLabel = STATUS_LABELS[request.status] || request.status;
   const statusVariant = STATUS_VARIANTS[request.status] || 'default';
@@ -59,7 +56,9 @@ export const RequestCard: React.FC<RequestCardProps> = ({ request, onClick, onDe
                   {accountInfo.badge}
                 </Badge>
               </div>
-              <p className="text-xs text-slate-500 mt-0.5">{accountInfo.title}</p>
+              <p className="text-xs text-slate-500 mt-0.5">
+                {requestTypeLabel} • {accountInfo.title}
+              </p>
             </div>
           </div>
 

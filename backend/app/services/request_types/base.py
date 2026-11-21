@@ -4,8 +4,11 @@ from typing import TYPE_CHECKING, List, Optional, Set, Union
 from app.models.enums import AutoDecision, DocumentType, RequestType
 
 if TYPE_CHECKING:
+    from sqlalchemy.orm import Session
+
     from app.models.document import Document
     from app.models.request import Request
+    from app.models.user import User
     from app.models.validation_result import ValidationResult
 
 
@@ -51,6 +54,27 @@ class RequestTypeHandler(ABC):
         documents: List["Document"],
     ) -> List["ValidationResult"]:
         """Run cross-validation rules for this request and return ValidationResult objects."""
+
+    def check_prerequisites(
+        self,
+        user: "User",
+        sub_type: str,
+        db: "Session",
+    ) -> Optional[str]:
+        """Optional prerequisite check before creating a request.
+
+        Returns an error message string if the user cannot create this request,
+        or None if all prerequisites are met.
+        """
+        return None
+
+    def on_approved(
+        self,
+        request: "Request",
+        db: "Session",
+    ) -> None:
+        """Optional hook invoked when an employee approves a request of this type."""
+        return None
 
     def compute_auto_decision(
         self,

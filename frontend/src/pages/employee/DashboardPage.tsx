@@ -40,7 +40,7 @@ import { useRequests } from '@/hooks/useRequests';
 import { useToast } from '@/hooks/useToast';
 import type { BankRequest, RequestStatus } from '@/types';
 import {
-  ACCOUNT_TYPES_INFO,
+  getSubTypeInfo,
   REQUEST_TYPE_LABELS,
   STATUS_LABELS,
   STATUS_VARIANTS,
@@ -398,20 +398,23 @@ export const EmployeeDashboardPage: React.FC = () => {
               </Select>
             </div>
 
-            {/* Account Sub-type Select */}
+            {/* Sub-type Select */}
             <div className="lg:col-span-2">
               <label className="text-[11px] font-semibold text-slate-600 block mb-1">
-                نوع الحساب
+                فئة الطلب
               </label>
               <Select value={subTypeFilter} onValueChange={handleSubTypeFilterChange}>
                 <SelectTrigger>
-                  <SelectValue placeholder="نوع الحساب" />
+                  <SelectValue placeholder="فئة الطلب" />
                 </SelectTrigger>
                 <SelectContent>
                   <SelectItem value="all">الكل (جميع الأنواع)</SelectItem>
                   <SelectItem value="individual">حساب أفراد (21+ سنة)</SelectItem>
                   <SelectItem value="youth">حساب شباب (15-21 سنة)</SelectItem>
                   <SelectItem value="minor">حساب قصّر (تحت 15 سنة)</SelectItem>
+                  <SelectItem value="prepaid">بطاقة مسبوقة الدفع</SelectItem>
+                  <SelectItem value="debit">بطاقة الخصم المباشر</SelectItem>
+                  <SelectItem value="credit">بطاقة ائتمانية</SelectItem>
                 </SelectContent>
               </Select>
             </div>
@@ -514,11 +517,7 @@ export const EmployeeDashboardPage: React.FC = () => {
                 const customerName = req.customer_name || req.customer?.name || 'غير محدد';
                 const customerEmail = req.customer_email || req.customer?.email || '-';
 
-                const subTypeInfo =
-                  ACCOUNT_TYPES_INFO[req.sub_type as keyof typeof ACCOUNT_TYPES_INFO] || {
-                    title: req.sub_type,
-                    badge: req.sub_type,
-                  };
+                const subTypeInfo = getSubTypeInfo(req.sub_type);
 
                 const statusLabel = STATUS_LABELS[req.status as RequestStatus] || req.status;
                 const statusVariant = STATUS_VARIANTS[req.status as RequestStatus] || 'default';

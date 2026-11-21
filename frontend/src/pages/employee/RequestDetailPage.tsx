@@ -28,7 +28,7 @@ import { useRequests } from '@/hooks/useRequests';
 import { useToast } from '@/hooks/useToast';
 import type { BankRequest, RequestStatus } from '@/types';
 import {
-  ACCOUNT_TYPES_INFO,
+  getSubTypeInfo,
   DOCUMENT_TYPE_LABELS,
   FIELD_LABELS,
   STATUS_LABELS,
@@ -237,13 +237,7 @@ export const EmployeeRequestDetailPage: React.FC = () => {
   const customerName = request.customer_name || request.customer?.name || 'غير محدد';
   const customerEmail = request.customer_email || request.customer?.email || '-';
 
-  const subTypeInfo =
-    ACCOUNT_TYPES_INFO[request.sub_type as keyof typeof ACCOUNT_TYPES_INFO] || {
-      title: request.sub_type,
-      badge: request.sub_type,
-      ageRange: '-',
-      description: '',
-    };
+  const subTypeInfo = getSubTypeInfo(request.sub_type);
 
   const statusLabel = STATUS_LABELS[request.status as RequestStatus] || request.status;
   const statusVariant = STATUS_VARIANTS[request.status as RequestStatus] || 'default';

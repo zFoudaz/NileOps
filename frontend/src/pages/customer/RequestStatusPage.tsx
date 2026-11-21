@@ -24,7 +24,7 @@ import { useRequests } from '@/hooks/useRequests';
 import { useToast } from '@/hooks/useToast';
 import type { BankRequest, RequestStatus } from '@/types';
 import {
-  ACCOUNT_TYPES_INFO,
+  getSubTypeInfo,
   STATUS_LABELS,
   STATUS_VARIANTS,
   DOCUMENT_TYPE_LABELS,
@@ -148,11 +148,7 @@ export const RequestStatusPage: React.FC = () => {
   }
 
   const shortId = request.id ? request.id.slice(0, 8).toUpperCase() : '';
-  const accountInfo =
-    ACCOUNT_TYPES_INFO[request.sub_type as keyof typeof ACCOUNT_TYPES_INFO] || {
-      title: request.sub_type,
-      badge: request.sub_type,
-    };
+  const accountInfo = getSubTypeInfo(request.sub_type);
   const statusLabel = STATUS_LABELS[request.status] || request.status;
   const statusVariant = STATUS_VARIANTS[request.status] || 'default';
 
