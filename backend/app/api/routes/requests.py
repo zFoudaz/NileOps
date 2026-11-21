@@ -21,6 +21,7 @@ from app.schemas.request import (
     RequestResponse,
 )
 from app.schemas.validation_result import ValidationResultResponse
+from app.services.request_types import get_handler
 
 router = APIRouter()
 
@@ -46,7 +47,7 @@ def create_request(
     new_request = Request(
         customer_id=current_user.id,
         request_type=request_in.request_type,
-        sub_type=request_in.sub_type.value,
+        sub_type=request_in.sub_type,
         status=RequestStatus.PENDING_UPLOAD,
     )
     db.add(new_request)
@@ -151,6 +152,9 @@ def get_extracted_data(
             detail="Request not found",
         )
 
+    handler = get_handler(req.request_type)
+    non_editable = {f.lower() for f in handler.non_editable_fields}
+
     doc_responses = []
     for doc in req.documents:
         extracted = doc.extracted_data or {}
@@ -161,7 +165,7 @@ def get_extracted_data(
         editable_flags = {}
         for key in all_keys:
             val = corrected.get(key, extracted.get(key))
-            editable = (key.lower() != "expiry_date")
+            editable = key.lower() not in non_editable
             fields.append(ExtractedFieldInfo(name=key, value=val, editable=editable))
             editable_flags[key] = editable
 
@@ -222,12 +226,15 @@ def submit_corrections(
             detail="Request not found",
         )
 
-    # Expiry date cannot be edited by user
-    if any(k.lower() == "expiry_date" for k in correction_in.corrected_fields.keys()):
-        raise HTTPException(
-            status_code=status.HTTP_400_BAD_REQUEST,
-            detail="expiry_date cannot be edited",
-        )
+    # Non-editable fields defined by the request type handler cannot be edited by user
+    handler = get_handler(req.request_type)
+    non_editable = {f.lower() for f in handler.non_editable_fields}
+    for key in correction_in.corrected_fields.keys():
+        if key.lower() in non_editable:
+            raise HTTPException(
+                status_code=status.HTTP_400_BAD_REQUEST,
+                detail=f"{key} cannot be edited",
+            )
 
     doc = (
         db.query(Document)

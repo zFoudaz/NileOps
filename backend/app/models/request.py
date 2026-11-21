@@ -53,5 +53,10 @@ class Request(Base):
 
     @property
     def required_documents(self):
-        from app.services.request_types.account_opening import get_required_documents
-        return get_required_documents(self.sub_type)
+        from app.services.request_types import get_handler
+
+        try:
+            handler = get_handler(self.request_type)
+        except ValueError:
+            return []
+        return handler.get_required_documents(self.sub_type)

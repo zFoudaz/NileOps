@@ -110,7 +110,24 @@ export interface BankRequest {
 
 export interface RequestCreatePayload {
   request_type?: RequestType;
-  sub_type: AccountType;
+  sub_type: string;
+}
+
+export interface SubTypeConfig {
+  key: string;
+  title: string;
+  badge: string;
+  ageRange: string;
+  description: string;
+  requiredDocs: DocumentType[];
+}
+
+export interface RequestTypeConfig {
+  key: RequestType;
+  title: string;
+  shortTitle: string;
+  description: string;
+  subTypes: Record<string, SubTypeConfig>;
 }
 
 export interface ProcessResponse {

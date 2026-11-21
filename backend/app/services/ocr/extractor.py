@@ -163,10 +163,13 @@ def process_request_documents(request_id: UUID, db: Optional[Session] = None) ->
                 logger.error("Error processing document %s for request %s: %s", doc.id, request_id, e)
 
         # Cross-validation and auto-decision
-        validations = validate_request(request_id, db)
-        decision = compute_auto_decision(validations)
-
         req = db.query(Request).filter(Request.id == request_id).first()
+        validations = validate_request(request_id, db)
+        decision = compute_auto_decision(
+            validations,
+            request_type=req.request_type if req else None,
+        )
+
         if req:
             req.auto_decision = decision
             req.status = RequestStatus.PENDING_CORRECTION
