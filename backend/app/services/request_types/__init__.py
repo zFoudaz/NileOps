@@ -5,6 +5,11 @@ from app.services.request_types.account_opening import (
     get_required_documents,
 )
 from app.services.request_types.base import RequestTypeHandler
+from app.services.request_types.card_issuance import (
+    CARD_OCR_DOCUMENTS,
+    CARD_REQUIRED_DOCUMENTS,
+    CardIssuanceHandler,
+)
 from app.services.request_types.registry import (
     get_handler,
     list_handlers,
@@ -13,6 +18,9 @@ from app.services.request_types.registry import (
 
 __all__ = [
     "AccountOpeningHandler",
+    "CARD_OCR_DOCUMENTS",
+    "CARD_REQUIRED_DOCUMENTS",
+    "CardIssuanceHandler",
     "OCR_DOCUMENTS",
     "REQUIRED_DOCUMENTS",
     "RequestTypeHandler",

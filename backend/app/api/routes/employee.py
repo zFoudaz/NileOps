@@ -12,6 +12,7 @@ from app.schemas.document import DocumentResponse
 from app.schemas.request import EmployeeRequestResponse, VerifyRequest
 from app.schemas.user import UserResponse
 from app.schemas.validation_result import ValidationResultResponse
+from app.services.request_types import get_handler
 
 router = APIRouter(dependencies=[Depends(require_role(UserRole.EMPLOYEE))])
 
@@ -190,6 +191,7 @@ def verify_request(
     else:
         req.status = RequestStatus.APPROVED
         req.rejection_reason = None
+        get_handler(req.request_type).on_approved(req, db)
 
     req.verified_by = current_user.id
     req.verified_at = datetime.now(timezone.utc)

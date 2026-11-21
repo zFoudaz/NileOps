@@ -11,20 +11,24 @@ import {
   Search,
   Filter,
   Trash2,
+  Landmark,
 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent } from '@/components/ui/card';
+import { Badge } from '@/components/ui/badge';
 import { Input } from '@/components/ui/input';
 import { Dialog } from '@/components/ui/dialog';
 import { RequestCard } from '@/components/requests/RequestCard';
 import { useRequests } from '@/hooks/useRequests';
 import { useToast } from '@/hooks/useToast';
-import type { BankRequest } from '@/types';
+import { getSubTypeInfo } from '@/lib/constants';
+import type { BankAccount, BankRequest } from '@/types';
 
 export const DashboardPage: React.FC = () => {
-  const { getMyRequests, deleteRequest, isLoading, error } = useRequests();
+  const { getMyRequests, getMyAccounts, deleteRequest, isLoading, error } = useRequests();
   const { toast } = useToast();
   const [requests, setRequests] = useState<BankRequest[]>([]);
+  const [accounts, setAccounts] = useState<BankAccount[]>([]);
   const [searchQuery, setSearchQuery] = useState('');
   const [statusFilter, setStatusFilter] = useState<'all' | 'active' | 'approved' | 'rejected'>('all');
   const [requestToDelete, setRequestToDelete] = useState<BankRequest | null>(null);
@@ -32,12 +36,13 @@ export const DashboardPage: React.FC = () => {
 
   const fetchRequests = useCallback(async () => {
     try {
-      const data = await getMyRequests();
-      setRequests(data);
+      const [reqData, accData] = await Promise.all([getMyRequests(), getMyAccounts()]);
+      setRequests(reqData);
+      setAccounts(accData);
     } catch {
       // Error handled by hook
     }
-  }, [getMyRequests]);
+  }, [getMyRequests, getMyAccounts]);
 
   const handleDeleteClick = (_e: React.MouseEvent, req: BankRequest) => {
     setRequestToDelete(req);
@@ -69,9 +74,10 @@ export const DashboardPage: React.FC = () => {
     let ignore = false;
     const run = async () => {
       try {
-        const data = await getMyRequests();
+        const [reqData, accData] = await Promise.all([getMyRequests(), getMyAccounts()]);
         if (!ignore) {
-          setRequests(data);
+          setRequests(reqData);
+          setAccounts(accData);
         }
       } catch {
         // Handled by hook
@@ -81,7 +87,7 @@ export const DashboardPage: React.FC = () => {
     return () => {
       ignore = true;
     };
-  }, [getMyRequests]);
+  }, [getMyRequests, getMyAccounts]);
 
   const stats = useMemo(() => {
     const total = requests.length;
@@ -132,9 +138,9 @@ export const DashboardPage: React.FC = () => {
       {/* Header */}
       <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
         <div>
-          <h1 className="text-2xl font-bold text-slate-900">طلبات فتح الحسابات المصرفية</h1>
+          <h1 className="text-2xl font-bold text-slate-900">طلباتي وحساباتي المصرفية</h1>
           <p className="text-sm text-slate-500 mt-1">
-            متابعة فورية لحالة طلباتك المصرفية، التحقق الآلي، وقرارات الحسابات
+            متابعة فورية لحالة طلباتك المصرفية، التحقق الآلي، وحساباتك المفعلة
           </p>
         </div>
         <div className="flex items-center gap-2">
@@ -157,6 +163,48 @@ export const DashboardPage: React.FC = () => {
           </Link>
         </div>
       </div>
+
+      {/* Active Bank Accounts Section */}
+      {accounts.length > 0 && (
+        <div className="space-y-2.5">
+          <h2 className="text-sm font-bold text-slate-800 flex items-center gap-2">
+            <Landmark className="h-4 w-4 text-emerald-600" />
+            حساباتي البنكية المفعلة ({accounts.length})
+          </h2>
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
+            {accounts.map((acc) => {
+              const typeMeta = getSubTypeInfo(acc.account_type);
+              return (
+                <Card
+                  key={acc.id}
+                  className="border-emerald-200 bg-gradient-to-l from-emerald-50/70 to-white shadow-2xs"
+                >
+                  <CardContent className="p-4 flex items-center justify-between gap-3">
+                    <div className="space-y-1">
+                      <div className="flex items-center gap-2">
+                        <span className="font-bold text-sm text-slate-900">{typeMeta.title}</span>
+                        <Badge variant="success" className="text-[11px]">
+                          مفعل
+                        </Badge>
+                      </div>
+                      <p className="font-mono text-sm font-semibold text-emerald-800 tracking-wider">
+                        {acc.account_number}
+                      </p>
+                      <p className="text-xs text-slate-600">
+                        {acc.holder_name}
+                        {acc.national_id ? ` • رقم قومي: ${acc.national_id}` : ''}
+                      </p>
+                    </div>
+                    <div className="h-11 w-11 rounded-xl bg-emerald-100 text-emerald-700 flex items-center justify-center shrink-0">
+                      <Landmark className="h-5 w-5" />
+                    </div>
+                  </CardContent>
+                </Card>
+              );
+            })}
+          </div>
+        </div>
+      )}
 
       {/* KPI Stats Summary Cards */}
       <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">

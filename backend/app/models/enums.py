@@ -25,7 +25,9 @@ class RequestStatus(str, enum.Enum):
 
 class RequestType(str, enum.Enum):
     ACCOUNT_OPENING = "account_opening"
+    CARD_ISSUANCE = "card_issuance"
     account_opening = "account_opening"
+    card_issuance = "card_issuance"
 
 
 class AccountType(str, enum.Enum):
@@ -37,6 +39,15 @@ class AccountType(str, enum.Enum):
     minor = "minor"
 
 
+class CardType(str, enum.Enum):
+    PREPAID = "prepaid"
+    DEBIT = "debit"
+    CREDIT = "credit"
+    prepaid = "prepaid"
+    debit = "debit"
+    credit = "credit"
+
+
 class DocumentType(str, enum.Enum):
     NATIONAL_ID_FRONT = "national_id_front"
     NATIONAL_ID_BACK = "national_id_back"
@@ -45,6 +56,7 @@ class DocumentType(str, enum.Enum):
     BIRTH_CERTIFICATE = "birth_certificate"
     GUARDIAN_NATIONAL_ID_FRONT = "guardian_national_id_front"
     GUARDIAN_NATIONAL_ID_BACK = "guardian_national_id_back"
+    GUARANTEE_PROOF = "guarantee_proof"
     national_id_front = "national_id_front"
     national_id_back = "national_id_back"
     proof_of_residence = "proof_of_residence"
@@ -52,6 +64,7 @@ class DocumentType(str, enum.Enum):
     birth_certificate = "birth_certificate"
     guardian_national_id_front = "guardian_national_id_front"
     guardian_national_id_back = "guardian_national_id_back"
+    guarantee_proof = "guarantee_proof"
 
 
 class AutoDecision(str, enum.Enum):

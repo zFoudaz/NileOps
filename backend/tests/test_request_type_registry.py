@@ -42,15 +42,15 @@ def test_request_create_validates_sub_type_via_handler():
 
 
 def test_custom_handler_registration_and_auto_decision():
-    class DummyCardHandler(RequestTypeHandler):
-        request_type = "card_issuance"  # type: ignore[assignment]
-        sub_types = {"debit", "credit"}
+    class DummyKycHandler(RequestTypeHandler):
+        request_type = "kyc_update"  # type: ignore[assignment]
+        sub_types = {"address", "employment"}
         ocr_documents = {DocumentType.NATIONAL_ID_FRONT}
-        auto_reject_rules = {"credit_score"}
+        auto_reject_rules = {"kyc_expiry"}
         non_editable_fields = {"expiry_date", "salary"}
 
         def get_required_documents(self, sub_type: str):
-            if sub_type.lower() == "credit":
+            if sub_type.lower() == "employment":
                 return [DocumentType.NATIONAL_ID_FRONT, DocumentType.PROOF_OF_INCOME]
             return [DocumentType.NATIONAL_ID_FRONT]
 
@@ -58,32 +58,32 @@ def test_custom_handler_registration_and_auto_decision():
             return [
                 ValidationResult(
                     request_id=request.id,
-                    rule_name="credit_score",
+                    rule_name="kyc_expiry",
                     passed=False,
-                    details={"reason": "below threshold"},
+                    details={"reason": "expired"},
                 )
             ]
 
-    register_handler(DummyCardHandler())
+    register_handler(DummyKycHandler())
     try:
-        handler = get_handler("card_issuance")
-        assert handler.is_valid_sub_type("credit") is True
-        assert handler.get_required_documents("credit") == [
+        handler = get_handler("kyc_update")
+        assert handler.is_valid_sub_type("employment") is True
+        assert handler.get_required_documents("employment") == [
             DocumentType.NATIONAL_ID_FRONT,
             DocumentType.PROOF_OF_INCOME,
         ]
         assert handler.requires_ocr(DocumentType.NATIONAL_ID_FRONT) is True
         assert handler.requires_ocr(DocumentType.PROOF_OF_INCOME) is False
 
-        failed_credit = [ValidationResult(rule_name="credit_score", passed=False)]
-        assert compute_auto_decision(failed_credit, request_type="card_issuance") == AutoDecision.AUTO_REJECTED
+        failed_kyc = [ValidationResult(rule_name="kyc_expiry", passed=False)]
+        assert compute_auto_decision(failed_kyc, request_type="kyc_update") == AutoDecision.AUTO_REJECTED
 
         # Non-auto-reject rule failure returns None
         failed_other = [ValidationResult(rule_name="address_check", passed=False)]
-        assert compute_auto_decision(failed_other, request_type="card_issuance") is None
+        assert compute_auto_decision(failed_other, request_type="kyc_update") is None
 
         # All passed returns AUTO_APPROVED
-        passed_all = [ValidationResult(rule_name="credit_score", passed=True)]
-        assert compute_auto_decision(passed_all, request_type="card_issuance") == AutoDecision.AUTO_APPROVED
+        passed_all = [ValidationResult(rule_name="kyc_expiry", passed=True)]
+        assert compute_auto_decision(passed_all, request_type="kyc_update") == AutoDecision.AUTO_APPROVED
     finally:
-        _REGISTRY.pop("card_issuance", None)
+        _REGISTRY.pop("kyc_update", None)

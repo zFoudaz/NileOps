@@ -1,7 +1,9 @@
 from datetime import date, datetime
 from typing import Any, Optional
+from uuid import UUID
 
 from app.models.document import Document
+from app.models.validation_result import ValidationResult
 
 ARABIC_INDIC_TO_ASCII = str.maketrans("٠١٢٣٤٥٦٧٨٩", "0123456789")
 
@@ -67,3 +69,46 @@ def index_documents_by_type(documents: list[Document]) -> dict[str, Document]:
         dtype = d.document_type.value if hasattr(d.document_type, "value") else str(d.document_type)
         docs_by_type[dtype.lower()] = d
     return docs_by_type
+
+
+def validate_id_expiry(request_id: UUID, back_doc: Optional[Document]) -> ValidationResult:
+    """Shared validation rule checking that a National ID back document is not expired."""
+    if not back_doc:
+        passed = False
+        details: dict[str, Any] = {"error": "National ID back document not found"}
+    else:
+        back_data = get_doc_data(back_doc)
+        raw_expiry = back_data.get("expiry_date")
+        if not raw_expiry:
+            passed = False
+            details = {"error": "Missing expiry date in national ID back"}
+        else:
+            parsed_expiry = parse_date(raw_expiry)
+            if not parsed_expiry:
+                passed = False
+                details = {
+                    "error": f"Invalid date format for expiry_date: {raw_expiry}",
+                    "expiry_date": str(raw_expiry),
+                }
+            else:
+                today = date.today()
+                if parsed_expiry < today:
+                    passed = False
+                    details = {
+                        "expiry_date": parsed_expiry.isoformat(),
+                        "reason": "ID is expired",
+                        "today": today.isoformat(),
+                    }
+                else:
+                    passed = True
+                    details = {
+                        "expiry_date": parsed_expiry.isoformat(),
+                        "today": today.isoformat(),
+                    }
+
+    return ValidationResult(
+        request_id=request_id,
+        rule_name="id_expiry",
+        passed=passed,
+        details=details,
+    )

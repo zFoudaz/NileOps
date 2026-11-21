@@ -1,6 +1,9 @@
 from datetime import date
 from typing import Dict, List, Set, Union
 
+from sqlalchemy.orm import Session
+
+from app.models.bank_account import BankAccount
 from app.models.document import Document
 from app.models.enums import AccountType, DocumentType, RequestType
 from app.models.request import Request
@@ -12,6 +15,7 @@ from app.services.validation.helpers import (
     index_documents_by_type,
     normalize_digits,
     parse_date,
+    validate_id_expiry,
 )
 from app.services.validation.national_id_decoder import decode_national_id
 
@@ -88,47 +92,7 @@ class AccountOpeningHandler(RequestTypeHandler):
             if not back_doc:
                 back_doc = docs_by_type.get(DocumentType.GUARDIAN_NATIONAL_ID_BACK.value.lower())
 
-        if not back_doc:
-            id_expiry_passed = False
-            id_expiry_details = {"error": "National ID back document not found"}
-        else:
-            back_data = get_doc_data(back_doc)
-            raw_expiry = back_data.get("expiry_date")
-            if not raw_expiry:
-                id_expiry_passed = False
-                id_expiry_details = {"error": "Missing expiry date in national ID back"}
-            else:
-                parsed_expiry = parse_date(raw_expiry)
-                if not parsed_expiry:
-                    id_expiry_passed = False
-                    id_expiry_details = {
-                        "error": f"Invalid date format for expiry_date: {raw_expiry}",
-                        "expiry_date": str(raw_expiry),
-                    }
-                else:
-                    today = date.today()
-                    if parsed_expiry < today:
-                        id_expiry_passed = False
-                        id_expiry_details = {
-                            "expiry_date": parsed_expiry.isoformat(),
-                            "reason": "ID is expired",
-                            "today": today.isoformat(),
-                        }
-                    else:
-                        id_expiry_passed = True
-                        id_expiry_details = {
-                            "expiry_date": parsed_expiry.isoformat(),
-                            "today": today.isoformat(),
-                        }
-
-        results.append(
-            ValidationResult(
-                request_id=request.id,
-                rule_name="id_expiry",
-                passed=id_expiry_passed,
-                details=id_expiry_details,
-            )
-        )
+        results.append(validate_id_expiry(request.id, back_doc))
 
         # 2. Age Check
         if sub_type == "minor":
@@ -262,3 +226,64 @@ class AccountOpeningHandler(RequestTypeHandler):
             )
 
         return results
+
+    def on_approved(self, request: Request, db: Session) -> None:
+        """Create an active BankAccount linked to the customer's national ID and profile."""
+        existing = (
+            db.query(BankAccount)
+            .filter(BankAccount.request_id == request.id)
+            .first()
+        )
+        if existing:
+            return
+
+        docs_by_type = index_documents_by_type(list(request.documents or []))
+        sub_type = (
+            request.sub_type.value
+            if hasattr(request.sub_type, "value")
+            else str(request.sub_type)
+        ).lower()
+
+        holder_name = request.customer.name if request.customer else "عميل نايل أوبس"
+        national_id = None
+        address = None
+
+        if sub_type == "minor":
+            birth_data = get_doc_data(docs_by_type.get(DocumentType.BIRTH_CERTIFICATE.value.lower()))
+            guardian_data = get_doc_data(
+                docs_by_type.get(DocumentType.GUARDIAN_NATIONAL_ID_FRONT.value.lower())
+            )
+            holder_name = (
+                birth_data.get("child_name")
+                or guardian_data.get("name")
+                or holder_name
+            )
+            raw_nid = (
+                birth_data.get("child_national_id")
+                or guardian_data.get("national_id")
+                or birth_data.get("father_national_id")
+            )
+            if raw_nid:
+                national_id = normalize_digits(str(raw_nid))
+            address = guardian_data.get("address")
+        else:
+            front_data = get_doc_data(docs_by_type.get(DocumentType.NATIONAL_ID_FRONT.value.lower()))
+            residence_data = get_doc_data(
+                docs_by_type.get(DocumentType.PROOF_OF_RESIDENCE.value.lower())
+            )
+            holder_name = front_data.get("name") or residence_data.get("holder_name") or holder_name
+            raw_nid = front_data.get("national_id")
+            if raw_nid:
+                national_id = normalize_digits(str(raw_nid))
+            address = front_data.get("address") or residence_data.get("address")
+
+        account = BankAccount(
+            user_id=request.customer_id,
+            request_id=request.id,
+            account_type=sub_type,
+            holder_name=str(holder_name),
+            national_id=national_id,
+            address=str(address) if address else None,
+            status="active",
+        )
+        db.add(account)
