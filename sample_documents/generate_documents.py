@@ -216,7 +216,16 @@ def draw_hologram_seal(draw: ImageDraw.Draw, hx: int, hy: int, radius: int = 44)
 # -------------------------------------------------------------
 # 1. National ID - Front (Egyptian National ID Card)
 # -------------------------------------------------------------
-def generate_id_front():
+def generate_id_front(
+    output_path: str = "sample_documents/national_id_front.png",
+    first_name: str = "محمد",
+    rest_name: str = "محمد أحمد حسنين",
+    address_line1: str = "١٥ شارع النصر - المعادي",
+    address_line2: str = "قسم المعادي - محافظة القاهرة",
+    national_id: str = "29810150101235",
+    serial: str = "مسلسل: س / ٩١٨٢٤٠١٥",
+):
+    os.makedirs(os.path.dirname(output_path), exist_ok=True)
     width, height = 1000, 630
 
     # Base card with soft pastel Egyptian ID gradient (cool cyan to pale sand)
@@ -302,22 +311,22 @@ def generate_id_front():
     font_address = get_font(FONT_BOLD, 23)
 
     # Row 1: First Name
-    draw.text((955, 185), ar("محمد"), font=font_first_name, fill=(10, 22, 40), anchor="rt")
+    draw.text((955, 185), ar(first_name), font=font_first_name, fill=(10, 22, 40), anchor="rt")
 
     # Row 2: Rest of Name
-    draw.text((955, 248), ar("محمد أحمد حسنين"), font=font_rest_name, fill=(10, 22, 40), anchor="rt")
+    draw.text((955, 248), ar(rest_name), font=font_rest_name, fill=(10, 22, 40), anchor="rt")
 
     # Subtle separator / Address Section
     draw.line([(310, 315), (955, 315)], fill=(195, 218, 232), width=1)
     draw.text((955, 326), ar("محل الإقامة:"), font=font_addr_label, fill=(70, 95, 120), anchor="rt")
 
     # Address Lines
-    draw.text((955, 355), ar("١٥ شارع النصر - المعادي"), font=font_address, fill=(15, 30, 50), anchor="rt")
-    draw.text((955, 395), ar("قسم المعادي - محافظة القاهرة"), font=font_address, fill=(15, 30, 50), anchor="rt")
+    draw.text((955, 355), ar(address_line1), font=font_address, fill=(15, 30, 50), anchor="rt")
+    draw.text((955, 395), ar(address_line2), font=font_address, fill=(15, 30, 50), anchor="rt")
 
     # Serial Number in small official font above bottom bar
     font_serial = get_font(FONT_BOLD, 14)
-    draw.text((955, 475), ar("مسلسل: س / ٩١٨٢٤٠١٥"), font=font_serial, fill=(70, 95, 120), anchor="rt")
+    draw.text((955, 475), ar(serial), font=font_serial, fill=(70, 95, 120), anchor="rt")
     draw.text((310, 475), "CODE: 01-EGY-CAI", font=get_font(FONT_MONO, 13), fill=(100, 125, 150), anchor="lt")
 
     # ---------------------------------------------------------
@@ -332,17 +341,29 @@ def generate_id_front():
 
     # 14 Digits in bold, high-contrast monospace OCR font
     font_id = get_font(FONT_MONO, 40)
-    draw.text((75, 545), "29810150101235", font=font_id, fill=(10, 20, 35), anchor="lm")
+    draw.text((75, 545), national_id, font=font_id, fill=(10, 20, 35), anchor="lm")
 
-    path = "sample_documents/national_id_front.png"
-    img.save(path, quality=95)
-    print(f"Generated: {path}")
+    img.save(output_path, quality=95)
+    print(f"Generated: {output_path}")
 
 
 # -------------------------------------------------------------
 # 2. National ID - Back
 # -------------------------------------------------------------
-def generate_id_back():
+def generate_id_back(
+    output_path: str = "sample_documents/national_id_back.png",
+    job: str = "مهندس برمجيات",
+    employer: str = "شركة النيل لتكنولوجيا المعلومات",
+    marital_status: str = "أعزب",
+    gender: str = "ذكر",
+    religion: str = "مسلم",
+    expiry_date: str = "2031/10/14",
+    issue_date: str = "2024/10/15",
+    national_id: str = "29810150101235",
+    mrz_line2: str = "9810158M3110145EGY<<<<<<<<<<<8",
+    mrz_line3: str = "HASSANEIN<<MOHAMED<MOHAMED<AHMED",
+):
+    os.makedirs(os.path.dirname(output_path), exist_ok=True)
     width, height = 1000, 630
     img = Image.new("RGB", (width, height), color=(230, 242, 248))
     draw = ImageDraw.Draw(img)
@@ -372,25 +393,25 @@ def generate_id_back():
 
     # Right side (Job & Employer & Marital)
     draw.text((950, 55), ar("المهنة:"), font=font_lbl, fill=(70, 85, 105), anchor="rt")
-    draw.text((860, 55), ar("مهندس برمجيات"), font=font_val, fill=(10, 25, 45), anchor="rt")
+    draw.text((860, 55), ar(job), font=font_val, fill=(10, 25, 45), anchor="rt")
 
     draw.text((950, 110), ar("جهة العمل:"), font=font_lbl, fill=(70, 85, 105), anchor="rt")
-    draw.text((830, 110), ar("شركة النيل لتكنولوجيا المعلومات"), font=font_val, fill=(10, 25, 45), anchor="rt")
+    draw.text((830, 110), ar(employer), font=font_val, fill=(10, 25, 45), anchor="rt")
 
     draw.text((950, 165), ar("الحالة الاجتماعية:"), font=font_lbl, fill=(70, 85, 105), anchor="rt")
-    draw.text((750, 165), ar("أعزب"), font=font_val, fill=(10, 25, 45), anchor="rt")
+    draw.text((750, 165), ar(marital_status), font=font_val, fill=(10, 25, 45), anchor="rt")
 
     # Left side (Gender, Religion, Expiry)
     draw.text((450, 55), ar("النوع:"), font=font_lbl, fill=(70, 85, 105), anchor="rt")
-    draw.text((370, 55), ar("ذكر"), font=font_val, fill=(10, 25, 45), anchor="rt")
+    draw.text((370, 55), ar(gender), font=font_val, fill=(10, 25, 45), anchor="rt")
 
     draw.text((450, 110), ar("الديانة:"), font=font_lbl, fill=(70, 85, 105), anchor="rt")
-    draw.text((370, 110), ar("مسلم"), font=font_val, fill=(10, 25, 45), anchor="rt")
+    draw.text((370, 110), ar(religion), font=font_val, fill=(10, 25, 45), anchor="rt")
 
     # Expiry Date (Highlighted)
     draw.rounded_rectangle([50, 150, 460, 215], radius=12, fill=(254, 242, 242), outline=(220, 38, 38), width=2)
     draw.text((440, 182), ar("تاريخ الانتهاء:"), font=font_lbl, fill=(185, 28, 28), anchor="rm")
-    draw.text((70, 182), "2031/10/14", font=get_font(FONT_BOLD, 26), fill=(185, 28, 28), anchor="lm")
+    draw.text((70, 182), expiry_date, font=get_font(FONT_BOLD, 26), fill=(185, 28, 28), anchor="lm")
 
     # Middle Barcode section
     draw.rounded_rectangle([45, 240, width - 45, 310], radius=10, fill=(255, 255, 255), outline=(190, 205, 220), width=2)
@@ -401,29 +422,31 @@ def generate_id_back():
         draw.rectangle([bx, 250, bx + bw, 300], fill=(15, 25, 40))
         bx += bw + random.choice([3, 5, 7])
 
-    draw.text((930, 275), ar("تاريخ الإصدار: 2024/10/15"), font=get_font(FONT_BOLD, 18), fill=(60, 75, 95), anchor="rm")
+    draw.text((930, 275), ar(f"تاريخ الإصدار: {issue_date}"), font=get_font(FONT_BOLD, 18), fill=(60, 75, 95), anchor="rm")
 
-    # Bottom MRZ Section (Egyptian National ID MRZ matching "محمد محمد أحمد حسنين")
+    # Bottom MRZ Section
     draw.rounded_rectangle([45, 335, width - 45, 585], radius=16, fill=(15, 23, 42))
 
     font_mrz = get_font(FONT_MONO, 28)
-    line1 = "ID<EGY29810150101235<<<<<<<<<<<<"
-    line2 = "9810158M3110145EGY<<<<<<<<<<<8"
-    line3 = "HASSANEIN<<MOHAMED<MOHAMED<AHMED"
+    line1 = f"ID<EGY{national_id}<<<<<<<<<<<<"
+    line2 = mrz_line2
+    line3 = mrz_line3
 
     draw.text((80, 395), line1, font=font_mrz, fill=(56, 189, 248), anchor="lm")
     draw.text((80, 465), line2, font=font_mrz, fill=(56, 189, 248), anchor="lm")
     draw.text((80, 535), line3, font=font_mrz, fill=(56, 189, 248), anchor="lm")
 
-    path = "sample_documents/national_id_back.png"
-    img.save(path, quality=95)
-    print(f"Generated: {path}")
+    img.save(output_path, quality=95)
+    print(f"Generated: {output_path}")
 
 
 # -------------------------------------------------------------
 # 3. Proof of Residence (Electricity Bill)
 # -------------------------------------------------------------
-def generate_proof_of_residence():
+def generate_proof_of_residence(
+    output_path: str = "sample_documents/proof_of_residence.png",
+):
+    os.makedirs(os.path.dirname(output_path), exist_ok=True)
     width, height = 900, 1150
     img = Image.new("RGB", (width, height), color=(255, 255, 255))
     draw = ImageDraw.Draw(img)
@@ -492,15 +515,17 @@ def generate_proof_of_residence():
     draw.text((stamp_cx, stamp_cy - 12), ar("تم السداد إلكترونياً - فوري"), font=get_font(FONT_BOLD, 20), fill=(185, 28, 28), anchor="mm")
     draw.text((stamp_cx, stamp_cy + 16), "PAID * AUTH: 9812401 * 2026-10-05", font=get_font(FONT_BOLD, 13), fill=(185, 28, 28), anchor="mm")
 
-    path = "sample_documents/proof_of_residence.png"
-    img.save(path, quality=95)
-    print(f"Generated: {path}")
+    img.save(output_path, quality=95)
+    print(f"Generated: {output_path}")
 
 
 # -------------------------------------------------------------
 # 4. Proof of Income (Salary Certificate)
 # -------------------------------------------------------------
-def generate_proof_of_income():
+def generate_proof_of_income(
+    output_path: str = "sample_documents/proof_of_income.png",
+):
+    os.makedirs(os.path.dirname(output_path), exist_ok=True)
     width, height = 900, 1200
     img = Image.new("RGB", (width, height), color=(255, 255, 255))
     draw = ImageDraw.Draw(img)
@@ -587,14 +612,186 @@ def generate_proof_of_income():
     draw.text((stamp_cx, stamp_cy), ar("الموارد البشرية - معتمد"), font=get_font(FONT_BOLD, 17), fill=(29, 78, 216), anchor="mm")
     draw.text((stamp_cx, stamp_cy + 30), "C.R: 489201 CAIRO", font=get_font(FONT_BOLD, 13), fill=(29, 78, 216), anchor="mm")
 
-    path = "sample_documents/proof_of_income.png"
-    img.save(path, quality=95)
-    print(f"Generated: {path}")
+    img.save(output_path, quality=95)
+    print(f"Generated: {output_path}")
+
+
+# -------------------------------------------------------------
+# 5. Birth Certificate (Computerized Egyptian Birth Certificate)
+# -------------------------------------------------------------
+def generate_birth_certificate(
+    output_path: str = "sample_documents/account_opening/minor/birth_certificate.png",
+    child_name: str = "عمر طارق حسن إبراهيم",
+    child_national_id: str = "31603100102351",
+    date_of_birth: str = "2016/03/10",
+    gender: str = "ذكر",
+    birth_place: str = "المعادي - القاهرة",
+    father_name: str = "طارق حسن إبراهيم علي",
+    father_national_id: str = "28507200101235",
+    mother_name: str = "سارة محمود عبد الله",
+):
+    os.makedirs(os.path.dirname(output_path), exist_ok=True)
+    width, height = 920, 1180
+    img = Image.new("RGB", (width, height), color=(248, 252, 249))
+    draw = ImageDraw.Draw(img)
+
+    # Outer ornamental double border (official green civil registry style)
+    draw.rectangle([20, 20, width - 20, height - 20], outline=(22, 101, 52), width=4)
+    draw.rectangle([30, 30, width - 30, height - 30], outline=(134, 239, 172), width=2)
+
+    # Soft central eagle watermark
+    draw_egyptian_eagle(draw, cx=width // 2, cy=height // 2 + 40, scale=3.2, is_gold=False)
+
+    # Header
+    draw.text((width - 55, 60), ar("جمهورية مصر العربية"), font=get_font(FONT_BOLD, 24), fill=(20, 83, 45), anchor="rt")
+    draw.text((width - 55, 96), ar("وزارة الداخلية"), font=get_font(FONT_BOLD, 18), fill=(22, 101, 52), anchor="rt")
+    draw.text((width - 55, 126), ar("قطاع مصلحة الأحوال المدنية"), font=get_font(FONT_REGULAR, 16), fill=(51, 65, 85), anchor="rt")
+
+    # Golden Eagle on left
+    draw.ellipse([55, 50, 145, 140], fill=(252, 248, 235), outline=(190, 145, 35), width=2)
+    draw_egyptian_eagle(draw, cx=100, cy=95, scale=1.1, is_gold=True)
+
+    # Main Title Banner
+    draw.rounded_rectangle([240, 165, width - 240, 225], radius=14, fill=(22, 101, 52))
+    draw.text((width // 2, 195), ar("صورة قيد ميلاد مميكنة"), font=get_font(FONT_BOLD, 28), fill=(255, 255, 255), anchor="mm")
+
+    # Child National ID Box
+    draw.rounded_rectangle([60, 255, width - 60, 325], radius=12, fill=(255, 255, 255), outline=(22, 101, 52), width=2)
+    draw.text((width - 85, 290), ar("الرقم القومي للمولود:"), font=get_font(FONT_BOLD, 20), fill=(20, 83, 45), anchor="rm")
+    draw.text((90, 290), child_national_id, font=get_font(FONT_MONO, 30), fill=(15, 23, 42), anchor="lm")
+
+    # Section 1: Child Data
+    draw.rounded_rectangle([60, 355, width - 60, 620], radius=12, fill=(255, 255, 255), outline=(187, 247, 208), width=2)
+    draw.rectangle([60, 355, width - 60, 405], fill=(220, 252, 231))
+    draw.text((width - 85, 380), ar("بيانات المولود"), font=get_font(FONT_BOLD, 22), fill=(20, 83, 45), anchor="rm")
+
+    child_rows = [
+        ("اسم المولود بالكامل:", child_name),
+        ("تاريخ الميلاد:", date_of_birth),
+        ("النوع:", gender),
+        ("محل الميلاد:", birth_place),
+    ]
+    ry = 440
+    for lbl, val in child_rows:
+        draw.text((width - 85, ry), ar(lbl), font=get_font(FONT_BOLD, 19), fill=(71, 85, 105), anchor="rm")
+        is_ascii = all(ord(c) < 128 for c in val)
+        draw.text(
+            (width - 310, ry),
+            val if is_ascii else ar(val),
+            font=get_font(FONT_BOLD, 23),
+            fill=(15, 23, 42),
+            anchor="rm",
+        )
+        ry += 48
+
+    # Section 2: Parents Data
+    draw.rounded_rectangle([60, 650, width - 60, 940], radius=12, fill=(255, 255, 255), outline=(187, 247, 208), width=2)
+    draw.rectangle([60, 650, width - 60, 700], fill=(220, 252, 231))
+    draw.text((width - 85, 675), ar("بيانات الوالدين"), font=get_font(FONT_BOLD, 22), fill=(20, 83, 45), anchor="rm")
+
+    parent_rows = [
+        ("اسم الأب بالكامل:", father_name),
+        ("الرقم القومي للأب:", father_national_id),
+        ("اسم الأم بالكامل:", mother_name),
+        ("الجنسية:", "مصري"),
+    ]
+    ry = 735
+    for lbl, val in parent_rows:
+        draw.text((width - 85, ry), ar(lbl), font=get_font(FONT_BOLD, 19), fill=(71, 85, 105), anchor="rm")
+        is_ascii = all(ord(c) < 128 for c in val)
+        draw.text(
+            (width - 310, ry),
+            val if is_ascii else ar(val),
+            font=get_font(FONT_MONO if is_ascii else FONT_BOLD, 24 if is_ascii else 22),
+            fill=(15, 23, 42),
+            anchor="rm",
+        )
+        ry += 52
+
+    # Official Stamp & Footer
+    draw.text((width - 85, 1005), ar("مكتب السجل المدني: سجل مدني المعادي - القاهرة"), font=get_font(FONT_BOLD, 17), fill=(51, 65, 85), anchor="rm")
+    draw.text((width - 85, 1040), ar("تاريخ الإصدار: 2026/10/10"), font=get_font(FONT_REGULAR, 16), fill=(71, 85, 105), anchor="rm")
+
+    stamp_cx, stamp_cy = 200, 1035
+    draw.ellipse([stamp_cx - 85, stamp_cy - 55, stamp_cx + 85, stamp_cy + 55], outline=(22, 101, 52), width=3)
+    draw.text((stamp_cx, stamp_cy - 15), ar("مصلحة الأحوال المدنية"), font=get_font(FONT_BOLD, 14), fill=(22, 101, 52), anchor="mm")
+    draw.text((stamp_cx, stamp_cy + 15), ar("ختم شعار الجمهورية"), font=get_font(FONT_BOLD, 15), fill=(22, 101, 52), anchor="mm")
+
+    img.save(output_path, quality=95)
+    print(f"Generated: {output_path}")
 
 
 if __name__ == "__main__":
-    generate_id_front()
-    generate_id_back()
-    generate_proof_of_residence()
-    generate_proof_of_income()
-    print("All 4 sample documents generated successfully!")
+    # 1. Legacy root sample documents (kept for integration tests)
+    generate_id_front("sample_documents/national_id_front.png")
+    generate_id_back("sample_documents/national_id_back.png")
+    generate_proof_of_residence("sample_documents/proof_of_residence.png")
+    generate_proof_of_income("sample_documents/proof_of_income.png")
+
+    # 2. Account Opening -> Individual (Age 21+: DOB 1998-10-15 -> Age 28)
+    ind_dir = "sample_documents/account_opening/individual"
+    generate_id_front(f"{ind_dir}/national_id_front.png")
+    generate_id_back(f"{ind_dir}/national_id_back.png")
+    generate_proof_of_residence(f"{ind_dir}/proof_of_residence.png")
+    generate_proof_of_income(f"{ind_dir}/proof_of_income.png")
+
+    # 3. Account Opening -> Youth (Age 15-21: DOB 2008-05-12 -> Age 18)
+    youth_dir = "sample_documents/account_opening/youth"
+    generate_id_front(
+        output_path=f"{youth_dir}/national_id_front.png",
+        first_name="يوسف",
+        rest_name="خالد محمود علي",
+        address_line1="٢٢ شارع التحرير - الدقي",
+        address_line2="قسم الدقي - محافظة الجيزة",
+        national_id="30805120101451",
+        serial="مسلسل: ش / ٥٤٢١٠٨٩٣",
+    )
+    generate_id_back(
+        output_path=f"{youth_dir}/national_id_back.png",
+        job="طالب",
+        employer="جامعة القاهرة",
+        marital_status="أعزب",
+        gender="ذكر",
+        religion="مسلم",
+        expiry_date="2032/05/11",
+        issue_date="2025/05/12",
+        national_id="30805120101451",
+        mrz_line2="0805124M3205112EGY<<<<<<<<<<<6",
+        mrz_line3="ALI<<YOUSSEF<KHALED<MAHMOUD<<<<<",
+    )
+
+    # 4. Account Opening -> Minor (Age < 15: DOB 2016-03-10 -> Age 10, Guardian NID matches father NID)
+    minor_dir = "sample_documents/account_opening/minor"
+    generate_birth_certificate(
+        output_path=f"{minor_dir}/birth_certificate.png",
+        child_name="عمر طارق حسن إبراهيم",
+        child_national_id="31603100102351",
+        date_of_birth="2016/03/10",
+        father_name="طارق حسن إبراهيم علي",
+        father_national_id="28507200101235",
+        mother_name="سارة محمود عبد الله",
+    )
+    generate_id_front(
+        output_path=f"{minor_dir}/guardian_national_id_front.png",
+        first_name="طارق",
+        rest_name="حسن إبراهيم علي",
+        address_line1="٨ شارع ٩ - المعادي",
+        address_line2="قسم المعادي - محافظة القاهرة",
+        national_id="28507200101235",
+        serial="مسلسل: ع / ٧٣١٠٩٤٢٦",
+    )
+    generate_id_back(
+        output_path=f"{minor_dir}/guardian_national_id_back.png",
+        job="محاسب قانوني",
+        employer="مكتب النيل للمحاسبة والمراجعة",
+        marital_status="متزوج",
+        gender="ذكر",
+        religion="مسلم",
+        expiry_date="2031/07/19",
+        issue_date="2024/07/20",
+        national_id="28507200101235",
+        mrz_line2="8507203M3107197EGY<<<<<<<<<<<4",
+        mrz_line3="ALI<<TAREK<HASSAN<IBRAHIM<<<<<<<",
+    )
+
+    print("All sample documents generated successfully!")
