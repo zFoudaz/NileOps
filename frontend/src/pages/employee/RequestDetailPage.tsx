@@ -31,6 +31,7 @@ import {
   getSubTypeInfo,
   DOCUMENT_TYPE_LABELS,
   FIELD_LABELS,
+  REQUEST_TYPE_LABELS,
   STATUS_LABELS,
   STATUS_VARIANTS,
 } from '@/lib/constants';
@@ -238,6 +239,7 @@ export const EmployeeRequestDetailPage: React.FC = () => {
   const customerEmail = request.customer_email || request.customer?.email || '-';
 
   const subTypeInfo = getSubTypeInfo(request.sub_type);
+  const requestTypeLabel = REQUEST_TYPE_LABELS[request.request_type] || 'طلب مصرفي';
 
   const statusLabel = STATUS_LABELS[request.status as RequestStatus] || request.status;
   const statusVariant = STATUS_VARIANTS[request.status as RequestStatus] || 'default';
@@ -299,7 +301,7 @@ export const EmployeeRequestDetailPage: React.FC = () => {
           <div>
             <div className="flex items-center gap-3">
               <h1 className="text-2xl font-extrabold text-slate-900 font-mono tracking-tight">
-                طلب فتح حساب #{shortId}
+                طلب {requestTypeLabel} #{shortId}
               </h1>
               <Badge variant="outline" className="text-xs bg-slate-50 border-slate-300">
                 {subTypeInfo.badge}
@@ -413,7 +415,7 @@ export const EmployeeRequestDetailPage: React.FC = () => {
                   <span className="font-medium text-slate-700 dir-ltr block truncate">{customerEmail}</span>
                 </div>
                 <div className="p-3 rounded-lg bg-slate-50 border border-slate-100">
-                  <span className="text-slate-400 block mb-1">نوع الحساب المطلوب</span>
+                  <span className="text-slate-400 block mb-1">فئة الطلب المطلوب</span>
                   <span className="font-bold text-emerald-800">{subTypeInfo.title}</span>
                 </div>
               </div>
@@ -711,12 +713,12 @@ export const EmployeeRequestDetailPage: React.FC = () => {
       <Dialog
         open={isApproveOpen}
         onClose={() => setIsApproveOpen(false)}
-        title="اعتماد وقبول طلب فتح الحساب المصرفي"
+        title={`اعتماد وقبول طلب ${requestTypeLabel}`}
         description="يرجى تأكيد قرار قبول الطلب بعد التحقق من مطابقة وصلاحية كافة المستندات والبيانات."
       >
         <div className="space-y-4 pt-2">
           <div className="rounded-lg bg-emerald-50 border border-emerald-200 p-3 text-xs text-emerald-900 leading-relaxed">
-            سيتم تفعيل حساب العميل ونقل حالة الطلب إلى <strong className="font-bold">معتمد (Approved)</strong>،
+            سيتم اعتماد الطلب ونقل حالته إلى <strong className="font-bold">معتمد (Approved)</strong>،
             كما سيتم توثيق اسمك وتاريخ وساعة الاعتماد بالسجل الرقابي.
           </div>
 
