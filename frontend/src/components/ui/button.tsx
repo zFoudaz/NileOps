@@ -3,7 +3,7 @@ import { cn } from '@/lib/utils';
 import { Loader2 } from 'lucide-react';
 
 export interface ButtonProps extends React.ButtonHTMLAttributes<HTMLButtonElement> {
-  variant?: 'default' | 'secondary' | 'outline' | 'destructive' | 'ghost' | 'success';
+  variant?: 'default' | 'gold' | 'secondary' | 'outline' | 'destructive' | 'ghost' | 'success';
   size?: 'sm' | 'md' | 'lg' | 'icon';
   isLoading?: boolean;
 }
@@ -11,21 +11,22 @@ export interface ButtonProps extends React.ButtonHTMLAttributes<HTMLButtonElemen
 export const Button = React.forwardRef<HTMLButtonElement, ButtonProps>(
   ({ className, variant = 'default', size = 'md', isLoading = false, children, disabled, ...props }, ref) => {
     const baseStyles =
-      'inline-flex items-center justify-center rounded-lg font-medium transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-offset-2 disabled:pointer-events-none disabled:opacity-50 cursor-pointer select-none';
+      'inline-flex items-center justify-center rounded-[10px] font-semibold transition-colors disabled:opacity-45 disabled:cursor-not-allowed cursor-pointer select-none border-[1.5px]';
 
     const variants = {
-      default: 'bg-emerald-600 text-white hover:bg-emerald-700 focus-visible:ring-emerald-500 shadow-sm',
-      secondary: 'bg-slate-100 text-slate-800 hover:bg-slate-200 focus-visible:ring-slate-400',
-      outline: 'border border-slate-300 bg-transparent text-slate-700 hover:bg-slate-100 focus-visible:ring-slate-400',
-      destructive: 'bg-rose-600 text-white hover:bg-rose-700 focus-visible:ring-rose-500 shadow-sm',
-      success: 'bg-emerald-600 text-white hover:bg-emerald-700 focus-visible:ring-emerald-500 shadow-sm',
-      ghost: 'bg-transparent text-slate-700 hover:bg-slate-100 focus-visible:ring-slate-400',
+      default: 'bg-[var(--teal)] border-[var(--teal)] text-white hover:bg-[var(--teal2)] hover:border-[var(--teal2)]',
+      gold: 'bg-[var(--gold)] border-[var(--gold)] text-[#1d1604] hover:brightness-95',
+      secondary: 'bg-[#ece4d0] border-[#ddd3bf] text-[var(--ink)] hover:bg-[#e3d9c1]',
+      outline: 'bg-transparent border-[var(--teal)] text-[var(--teal)] hover:bg-[var(--in-bg)]',
+      destructive: 'bg-[var(--bad)] border-[var(--bad)] text-white hover:brightness-90',
+      success: 'bg-[var(--ok)] border-[var(--ok)] text-white hover:brightness-95',
+      ghost: 'bg-transparent border-transparent text-[var(--ink)] hover:bg-[var(--hover-row)]',
     };
 
     const sizes = {
-      sm: 'h-8 px-3 text-xs gap-1.5',
-      md: 'h-10 px-4 text-sm gap-2',
-      lg: 'h-12 px-6 text-base gap-2.5',
+      sm: 'min-h-[36px] px-3.5 text-[14px] gap-1.5',
+      md: 'min-h-[44px] px-5 text-[15px] gap-2',
+      lg: 'min-h-[48px] px-6 text-[16px] gap-2.5',
       icon: 'h-10 w-10 p-0',
     };
 

@@ -1,10 +1,11 @@
 import React from 'react';
 import { useNavigate } from 'react-router-dom';
-import { Calendar, ChevronLeft, ShieldCheck, ShieldAlert, FileText, Trash2 } from 'lucide-react';
-import { Card, CardContent } from '@/components/ui/card';
+import { Trash2 } from 'lucide-react';
+import { Card } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
-import type { BankRequest } from '@/types';
-import { getSubTypeInfo, REQUEST_TYPE_LABELS, STATUS_LABELS, STATUS_VARIANTS } from '@/lib/constants';
+import { Button } from '@/components/ui/button';
+import type { BankRequest, RequestStatus } from '@/types';
+import { getSubTypeInfo, REQUEST_TYPE_LABELS, STATUS_LABELS } from '@/lib/constants';
 
 interface RequestCardProps {
   request: BankRequest;
@@ -12,104 +13,133 @@ interface RequestCardProps {
   onDelete?: (e: React.MouseEvent, request: BankRequest) => void;
 }
 
+function getStatusMeta(status: RequestStatus): {
+  variant: 'success' | 'destructive' | 'warning' | 'info';
+  icon: string;
+  nextStep: string;
+  cta: string;
+  targetPath: (id: string) => string;
+} {
+  switch (status) {
+    case 'pending_upload':
+      return {
+        variant: 'warning',
+        icon: '!',
+        nextStep: 'ارفع المستندات المطلوبة',
+        cta: 'رفع المستندات',
+        targetPath: (id) => `/requests/${id}/upload`,
+      };
+    case 'processing':
+      return {
+        variant: 'info',
+        icon: '◔',
+        nextStep: 'جاري الفحص الآلي للمستندات',
+        cta: 'متابعة المعالجة',
+        targetPath: (id) => `/requests/${id}/upload`,
+      };
+    case 'pending_correction':
+      return {
+        variant: 'warning',
+        icon: '!',
+        nextStep: 'راجع بياناتك',
+        cta: 'مراجعة البيانات',
+        targetPath: (id) => `/requests/${id}/review`,
+      };
+    case 'pending_review':
+      return {
+        variant: 'info',
+        icon: '◔',
+        nextStep: 'بانتظار الموظف',
+        cta: 'تتبّع الطلب',
+        targetPath: (id) => `/requests/${id}`,
+      };
+    case 'approved':
+      return {
+        variant: 'success',
+        icon: '✓',
+        nextStep: 'لا يوجد',
+        cta: 'عرض التفاصيل',
+        targetPath: (id) => `/requests/${id}`,
+      };
+    case 'rejected':
+      return {
+        variant: 'destructive',
+        icon: '✕',
+        nextStep: 'راجع سبب الرفض',
+        cta: 'عرض التفاصيل',
+        targetPath: (id) => `/requests/${id}`,
+      };
+    default:
+      return {
+        variant: 'info',
+        icon: '◔',
+        nextStep: 'متابعة الطلب',
+        cta: 'عرض التفاصيل',
+        targetPath: (id) => `/requests/${id}`,
+      };
+  }
+}
+
 export const RequestCard: React.FC<RequestCardProps> = ({ request, onClick, onDelete }) => {
   const navigate = useNavigate();
 
   const shortId = request.id ? request.id.slice(0, 8).toUpperCase() : '';
-  const accountInfo = getSubTypeInfo(request.sub_type);
-  const requestTypeLabel = REQUEST_TYPE_LABELS[request.request_type] || request.request_type;
-
+  const subTypeInfo = getSubTypeInfo(request.sub_type);
+  const requestTypeLabel = REQUEST_TYPE_LABELS[request.request_type] || 'فتح حساب بنكي';
   const statusLabel = STATUS_LABELS[request.status] || request.status;
-  const statusVariant = STATUS_VARIANTS[request.status] || 'default';
+  const meta = getStatusMeta(request.status);
 
-  const formattedDate = new Date(request.created_at).toLocaleDateString('ar-EG', {
-    year: 'numeric',
-    month: 'long',
-    day: 'numeric',
-  });
+  const formattedDate = new Date(request.created_at).toISOString().slice(0, 10);
 
-  const handleClick = () => {
+  const handleOpen = () => {
     if (onClick) {
       onClick();
     } else {
-      navigate(`/requests/${request.id}`);
+      navigate(meta.targetPath(request.id));
     }
   };
 
   return (
-    <Card
-      onClick={handleClick}
-      className="group cursor-pointer transition duration-200 hover:shadow-md hover:border-emerald-300 border-slate-200 bg-white"
-    >
-      <CardContent className="p-5">
-        <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 pb-3 border-b border-slate-100">
-          <div className="flex items-center gap-2.5">
-            <div className="h-9 w-9 rounded-lg bg-emerald-50 text-emerald-700 flex items-center justify-center font-mono font-bold text-xs shrink-0">
-              <FileText className="h-4 w-4" />
-            </div>
-            <div>
-              <div className="flex items-center gap-2">
-                <span className="font-mono text-sm font-semibold text-slate-800">
-                  #{shortId}
-                </span>
-                <Badge variant="outline" className="text-xs bg-slate-50 text-slate-700 border-slate-200">
-                  {accountInfo.badge}
-                </Badge>
-              </div>
-              <p className="text-xs text-slate-500 mt-0.5">
-                {requestTypeLabel} • {accountInfo.title}
-              </p>
-            </div>
-          </div>
-
-          <div className="flex items-center gap-2 self-start sm:self-center">
-            <Badge variant={statusVariant} className="text-xs font-medium py-1 px-2.5">
-              {statusLabel}
-            </Badge>
-            {onDelete && request.status !== 'processing' && (
-              <button
-                type="button"
-                onClick={(e) => {
-                  e.stopPropagation();
-                  onDelete(e, request);
-                }}
-                title="حذف الطلب"
-                className="p-1.5 text-slate-400 hover:text-rose-600 hover:bg-rose-50 rounded-md transition-colors"
-              >
-                <Trash2 className="h-4 w-4" />
-                <span className="sr-only">حذف الطلب</span>
-              </button>
-            )}
-          </div>
+    <Card className="p-5 flex flex-col justify-between gap-3">
+      <div>
+        <div className="flex items-start justify-between gap-2 flex-wrap">
+          <b className="text-[16px] text-[var(--ink)]">{requestTypeLabel}</b>
+          <Badge variant={meta.variant}>
+            <span>{meta.icon}</span>
+            <span>{statusLabel}</span>
+          </Badge>
         </div>
 
-        <div className="mt-3 flex items-center justify-between text-xs text-slate-500 pt-1">
-          <div className="flex items-center gap-1.5">
-            <Calendar className="h-3.5 w-3.5 text-slate-400" />
-            <span>تاريخ التقديم: {formattedDate}</span>
-          </div>
+        <p className="text-[14px] text-[var(--mut)] my-2">
+          {subTypeInfo.title} · <span className="ltr">{formattedDate}</span> ·{' '}
+          <span className="ltr">#{shortId}</span>
+        </p>
 
-          <div className="flex items-center gap-3">
-            {request.auto_decision === 'auto_approved' && (
-              <span className="flex items-center gap-1 text-emerald-700 font-medium">
-                <ShieldCheck className="h-3.5 w-3.5" />
-                فحص آلي مطابق
-              </span>
-            )}
-            {request.auto_decision === 'auto_rejected' && (
-              <span className="flex items-center gap-1 text-rose-700 font-medium">
-                <ShieldAlert className="h-3.5 w-3.5" />
-                فحص آلي مرفوض
-              </span>
-            )}
+        <p className="text-[14px] text-[var(--ink)]">
+          الخطوة التالية: <b>{meta.nextStep}</b>
+        </p>
+      </div>
 
-            <div className="flex items-center gap-1 text-emerald-700 font-semibold group-hover:translate-x-[-2px] transition-transform">
-              <span>عرض التفاصيل</span>
-              <ChevronLeft className="h-4 w-4" />
-            </div>
-          </div>
-        </div>
-      </CardContent>
+      <div className="flex items-center justify-between gap-2 pt-1">
+        <Button type="button" variant="outline" size="sm" onClick={handleOpen}>
+          {meta.cta}
+        </Button>
+
+        {onDelete && request.status !== 'processing' && (
+          <button
+            type="button"
+            onClick={(e) => {
+              e.stopPropagation();
+              onDelete(e, request);
+            }}
+            title="حذف الطلب"
+            aria-label="حذف الطلب"
+            className="p-2 rounded-[8px] text-[var(--mut)] hover:text-[var(--bad)] hover:bg-[var(--bad-bg)] transition-colors cursor-pointer"
+          >
+            <Trash2 className="h-4 w-4" />
+          </button>
+        )}
+      </div>
     </Card>
   );
 };

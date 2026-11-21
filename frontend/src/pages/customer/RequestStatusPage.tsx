@@ -1,23 +1,10 @@
 import React, { useEffect, useState, useCallback } from 'react';
 import { useParams, Link, useNavigate } from 'react-router-dom';
-import {
-  CheckCircle2,
-  XCircle,
-  Clock,
-  ArrowRight,
-  ShieldCheck,
-  ShieldAlert,
-  Eye,
-  RefreshCw,
-  Edit3,
-  Upload,
-  AlertCircle,
-  Loader2,
-  Trash2,
-} from 'lucide-react';
+import { Loader2 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
-import { Card, CardContent } from '@/components/ui/card';
+import { Card } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
+import { Alert, AlertDescription } from '@/components/ui/alert';
 import { Dialog } from '@/components/ui/dialog';
 import { ValidationBadge } from '@/components/requests/ValidationBadge';
 import { useRequests } from '@/hooks/useRequests';
@@ -26,17 +13,26 @@ import type { BankRequest, RequestStatus } from '@/types';
 import {
   getSubTypeInfo,
   STATUS_LABELS,
-  STATUS_VARIANTS,
   DOCUMENT_TYPE_LABELS,
-  AUTO_DECISION_LABELS,
+  REQUEST_TYPE_LABELS,
 } from '@/lib/constants';
 import { resolveImageUrl } from '@/lib/api';
 
 interface TimelineStep {
   step: number;
   label: string;
-  description: string;
   status: 'completed' | 'current' | 'upcoming' | 'rejected';
+}
+
+function getStatusBadge(status: RequestStatus): {
+  variant: 'success' | 'destructive' | 'warning' | 'info';
+  icon: string;
+} {
+  if (status === 'approved') return { variant: 'success', icon: '✓' };
+  if (status === 'rejected') return { variant: 'destructive', icon: '✕' };
+  if (status === 'pending_upload' || status === 'pending_correction')
+    return { variant: 'warning', icon: '!' };
+  return { variant: 'info', icon: '◔' };
 }
 
 export const RequestStatusPage: React.FC = () => {
@@ -48,29 +44,8 @@ export const RequestStatusPage: React.FC = () => {
   const [request, setRequest] = useState<BankRequest | null>(null);
   const [loading, setLoading] = useState<boolean>(true);
   const [previewImage, setPreviewImage] = useState<string | null>(null);
-  const [failedImages, setFailedImages] = useState<Record<string, boolean>>({});
   const [isDeleteDialogOpen, setIsDeleteDialogOpen] = useState<boolean>(false);
   const [isDeleting, setIsDeleting] = useState<boolean>(false);
-
-  const handleDelete = async () => {
-    if (!request) return;
-    try {
-      setIsDeleting(true);
-      await deleteRequest(request.id);
-      toast({
-        title: 'تم حذف الطلب بنجاح',
-        description: `تم حذف الطلب وكافة المستندات المرتبطة به نهائياً.`,
-      });
-      navigate('/dashboard');
-    } catch (err: unknown) {
-      toast({
-        variant: 'destructive',
-        title: 'خطأ في عملية الحذف',
-        description: err instanceof Error ? err.message : 'تعذر حذف الطلب',
-      });
-      setIsDeleting(false);
-    }
-  };
 
   const fetchDetails = useCallback(async () => {
     if (!id) return;
@@ -80,11 +55,7 @@ export const RequestStatusPage: React.FC = () => {
       setRequest(data);
     } catch (err: unknown) {
       const msg = err instanceof Error ? err.message : 'فشل في تحميل تفاصيل الطلب';
-      toast({
-        variant: 'destructive',
-        title: 'خطأ',
-        description: msg,
-      });
+      toast({ variant: 'destructive', title: 'خطأ', description: msg });
     } finally {
       setLoading(false);
     }
@@ -97,22 +68,14 @@ export const RequestStatusPage: React.FC = () => {
       try {
         setLoading(true);
         const data = await getRequest(id);
-        if (!ignore) {
-          setRequest(data);
-        }
+        if (!ignore) setRequest(data);
       } catch (err: unknown) {
         if (!ignore) {
           const msg = err instanceof Error ? err.message : 'فشل في تحميل تفاصيل الطلب';
-          toast({
-            variant: 'destructive',
-            title: 'خطأ',
-            description: msg,
-          });
+          toast({ variant: 'destructive', title: 'خطأ', description: msg });
         }
       } finally {
-        if (!ignore) {
-          setLoading(false);
-        }
+        if (!ignore) setLoading(false);
       }
     };
     void run();
@@ -121,59 +84,54 @@ export const RequestStatusPage: React.FC = () => {
     };
   }, [id, getRequest, toast]);
 
+  const handleDelete = async () => {
+    if (!request) return;
+    try {
+      setIsDeleting(true);
+      await deleteRequest(request.id);
+      toast({ variant: 'success', title: 'تم حذف الطلب بنجاح' });
+      navigate('/dashboard');
+    } catch (err: unknown) {
+      toast({
+        variant: 'destructive',
+        title: 'خطأ في الحذف',
+        description: err instanceof Error ? err.message : 'تعذر حذف الطلب',
+      });
+      setIsDeleting(false);
+    }
+  };
+
   if (loading) {
     return (
-      <div className="flex flex-col items-center justify-center py-24">
-        <Loader2 className="h-8 w-8 animate-spin text-emerald-600 mb-3" />
-        <span className="text-sm font-medium text-slate-600">جاري تحميل بيانات الطلب...</span>
-      </div>
+      <Card className="py-16 text-center">
+        <Loader2 className="h-7 w-7 animate-spin text-[var(--teal)] mx-auto mb-2" />
+        <p className="text-sm text-[var(--mut)]">جاري تحميل بيانات الطلب...</p>
+      </Card>
     );
   }
 
   if (!request || !id) {
     return (
-      <div className="max-w-2xl mx-auto rounded-xl border border-rose-200 bg-rose-50 p-8 text-center">
-        <ShieldAlert className="h-10 w-10 text-rose-600 mx-auto mb-3" />
-        <h2 className="text-lg font-bold text-rose-900">تعذر العثور على الطلب</h2>
-        <p className="text-xs text-rose-700 mt-1 mb-4">
-          الطلب غير متاح أو ليس لديك صلاحية للوصول إليه.
-        </p>
+      <Card className="p-8 text-center">
+        <h2 className="text-lg font-bold text-[var(--bad)] mb-2">تعذر العثور على الطلب</h2>
         <Link to="/dashboard">
           <Button variant="outline" size="sm">
-            الرجوع إلى لوحة التحكم
+            الرجوع للوحة التحكم
           </Button>
         </Link>
-      </div>
+      </Card>
     );
   }
 
-  const shortId = request.id ? request.id.slice(0, 8).toUpperCase() : '';
-  const accountInfo = getSubTypeInfo(request.sub_type);
+  const shortId = request.id.slice(0, 8).toUpperCase();
+  const subTypeInfo = getSubTypeInfo(request.sub_type);
+  const requestTypeLabel = REQUEST_TYPE_LABELS[request.request_type] || 'طلب مصرفي';
   const statusLabel = STATUS_LABELS[request.status] || request.status;
-  const statusVariant = STATUS_VARIANTS[request.status] || 'default';
+  const badgeMeta = getStatusBadge(request.status);
+  const formattedCreated = new Date(request.created_at).toISOString().slice(0, 10);
 
-  const formattedCreated = new Date(request.created_at).toLocaleDateString('ar-EG', {
-    year: 'numeric',
-    month: 'long',
-    day: 'numeric',
-    hour: '2-digit',
-    minute: '2-digit',
-  });
-
-  const formattedUpdated = new Date(request.updated_at).toLocaleDateString('ar-EG', {
-    year: 'numeric',
-    month: 'long',
-    day: 'numeric',
-    hour: '2-digit',
-    minute: '2-digit',
-  });
-
-  // Calculate timeline steps
   const getTimeline = (status: RequestStatus): TimelineStep[] => {
-    const isRejected = status === 'rejected';
-    const isApproved = status === 'approved';
-
-    let s1: TimelineStep['status'] = 'completed';
+    const s1: TimelineStep['status'] = 'completed';
     let s2: TimelineStep['status'] = 'upcoming';
     let s3: TimelineStep['status'] = 'upcoming';
     let s4: TimelineStep['status'] = 'upcoming';
@@ -181,551 +139,228 @@ export const RequestStatusPage: React.FC = () => {
 
     if (status === 'pending_upload') {
       s2 = 'current';
-    } else if (status === 'processing') {
-      s2 = 'completed';
-      s3 = 'current';
-    } else if (status === 'pending_correction') {
+    } else if (status === 'processing' || status === 'pending_correction') {
       s2 = 'completed';
       s3 = 'current';
     } else if (status === 'pending_review') {
       s2 = 'completed';
       s3 = 'completed';
       s4 = 'current';
-    } else if (isApproved) {
-      s1 = 'completed';
-      s2 = 'completed';
-      s3 = 'completed';
-      s4 = 'completed';
-      s5 = 'completed';
-    } else if (isRejected) {
-      s1 = 'completed';
-      s2 = 'completed';
-      s3 = 'completed';
-      s4 = 'completed';
+    } else if (status === 'approved') {
+      s2 = s3 = s4 = s5 = 'completed';
+    } else if (status === 'rejected') {
+      s2 = s3 = s4 = 'completed';
       s5 = 'rejected';
     }
 
     return [
-      {
-        step: 1,
-        label: 'تقديم الطلب',
-        description: 'تم تسجيل الطلب وتحديد نوع الحساب',
-        status: s1,
-      },
-      {
-        step: 2,
-        label: 'رفع المستندات',
-        description: 'رفع الصور الثبوتية المطلوبة',
-        status: s2,
-      },
-      {
-        step: 3,
-        label: 'الفحص والتحقق الآلي',
-        description: 'قراءة النصوص OCR ومطابقة القواعد',
-        status: s3,
-      },
-      {
-        step: 4,
-        label: 'مراجعة الموظف المختص',
-        description: 'تدقيق المستندات والبيانات يدوياً',
-        status: s4,
-      },
-      {
-        step: 5,
-        label: 'القرار النهائي وتفعيل الحساب',
-        description: isRejected ? 'تم رفض الطلب' : 'تفعيل الحساب البنكي',
-        status: s5,
-      },
+      { step: 1, label: 'تقديم الطلب', status: s1 },
+      { step: 2, label: 'رفع المستندات', status: s2 },
+      { step: 3, label: 'الفحص الآلي ومراجعة البيانات', status: s3 },
+      { step: 4, label: 'مراجعة الموظف', status: s4 },
+      { step: 5, label: status === 'rejected' ? 'تم الرفض' : 'القرار النهائي', status: s5 },
     ];
   };
 
   const timelineSteps = getTimeline(request.status);
 
   return (
-    <div className="max-w-4xl mx-auto space-y-6">
-      {/* Header */}
-      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
-        <div>
-          <div className="flex items-center gap-2">
-            <span className="font-mono text-xs font-semibold text-emerald-700 bg-emerald-50 px-2 py-0.5 rounded">
-              #{shortId}
-            </span>
-            <Badge variant="outline" className="text-xs">
-              {accountInfo.title}
-            </Badge>
-            <Badge variant={statusVariant} className="text-xs">
-              {statusLabel}
-            </Badge>
-          </div>
-          <h1 className="text-2xl font-bold text-slate-900 mt-1">متابعة تفاصيل وحالة الطلب</h1>
-          <p className="text-xs text-slate-500 mt-0.5">
-            تاريخ التقديم: {formattedCreated} • آخر تحديث: {formattedUpdated}
-          </p>
-        </div>
-
-        <div className="flex items-center gap-2">
-          {request.status !== 'processing' && (
-            <Button
-              variant="outline"
-              size="sm"
-              onClick={() => setIsDeleteDialogOpen(true)}
-              disabled={hookLoading || isDeleting}
-              className="gap-1.5 text-xs text-rose-600 border-rose-200 hover:bg-rose-50 hover:text-rose-700"
-            >
-              <Trash2 className="h-3.5 w-3.5" />
-              حذف الطلب
-            </Button>
-          )}
-
-          <Button
-            variant="outline"
-            size="sm"
-            onClick={fetchDetails}
-            disabled={hookLoading || isDeleting}
-            className="gap-1.5 text-xs text-slate-600"
-          >
-            <RefreshCw className={`h-3.5 w-3.5 ${hookLoading ? 'animate-spin' : ''}`} />
-            تحديث
+    <div className="space-y-5">
+      <div>
+        <div className="flex items-center justify-between gap-3 flex-wrap">
+          <Button type="button" variant="outline" size="sm" onClick={() => navigate('/dashboard')}>
+            → رجوع
           </Button>
-          <Link to="/dashboard">
-            <Button variant="ghost" size="sm" className="gap-1.5 text-xs text-slate-600">
-              الرجوع للوحة التحكم
-              <ArrowRight className="h-4 w-4" />
+          <div className="flex items-center gap-2">
+            <Button type="button" variant="outline" size="sm" onClick={fetchDetails} disabled={hookLoading}>
+              تحديث
             </Button>
-          </Link>
-        </div>
-      </div>
-
-      {/* Decision Alerts */}
-      {request.status === 'approved' && (
-        <div className="rounded-2xl border border-emerald-300 bg-emerald-50/80 p-5 shadow-xs flex items-start gap-4">
-          <div className="h-11 w-11 rounded-2xl bg-emerald-100 text-emerald-700 flex items-center justify-center shrink-0">
-            <CheckCircle2 className="h-6 w-6" />
-          </div>
-          <div className="flex-1">
-            <div className="flex items-center gap-2">
-              <h3 className="text-base font-bold text-emerald-950">
-                تهانينا! تم قبول طلبك وتفعيل الحساب المصرفي
-              </h3>
-              <Badge variant="success" className="text-xs">
-                معتمد
-              </Badge>
-            </div>
-            <p className="text-xs text-emerald-800 mt-1 leading-relaxed">
-              تمت مراجعة جميع المستندات والموافقة عليها بنجاح من قبل فريق العمليات المصرفية. يمكنك الآن استخدام حسابك والتمتع بكافة الخدمات البنكية.
-            </p>
-            {request.verified_at && (
-              <p className="text-[11px] text-emerald-700 mt-2 font-medium">
-                تم الاعتماد بتاريخ:{' '}
-                {new Date(request.verified_at).toLocaleDateString('ar-EG', {
-                  year: 'numeric',
-                  month: 'long',
-                  day: 'numeric',
-                })}
-              </p>
+            {request.status !== 'processing' && (
+              <Button
+                type="button"
+                variant="destructive"
+                size="sm"
+                onClick={() => setIsDeleteDialogOpen(true)}
+                disabled={hookLoading || isDeleting}
+              >
+                حذف الطلب
+              </Button>
             )}
           </div>
         </div>
+
+        <div className="flex items-center justify-between gap-3 flex-wrap mt-4">
+          <div>
+            <h1 className="text-[26px] sm:text-[28px] font-bold m-0">
+              طلب <span className="ltr">#{shortId}</span> — {requestTypeLabel}
+            </h1>
+            <p className="text-[var(--mut)] mt-1 mb-0">
+              {subTypeInfo.title} · <span className="ltr">{formattedCreated}</span>
+            </p>
+          </div>
+          <Badge variant={badgeMeta.variant}>
+            <span>{badgeMeta.icon}</span>
+            <span>{statusLabel}</span>
+          </Badge>
+        </div>
+      </div>
+
+      {/* Decision Banners */}
+      {request.status === 'approved' && (
+        <Alert variant="success">
+          <AlertDescription className="font-semibold">
+            ✓ تمت الموافقة على طلبك بنجاح.
+            {request.verifier_name ? ` (بواسطة ${request.verifier_name})` : ''}
+          </AlertDescription>
+        </Alert>
       )}
 
       {request.status === 'rejected' && (
-        <div className="rounded-2xl border border-rose-300 bg-rose-50/90 p-5 shadow-xs flex items-start gap-4">
-          <div className="h-11 w-11 rounded-2xl bg-rose-100 text-rose-700 flex items-center justify-center shrink-0">
-            <XCircle className="h-6 w-6" />
-          </div>
-          <div className="flex-1">
-            <div className="flex items-center gap-2">
-              <h3 className="text-base font-bold text-rose-950">
-                تم رفض طلب فتح الحساب
-              </h3>
-              <Badge variant="destructive" className="text-xs">
-                مرفوض
-              </Badge>
-            </div>
-            {request.rejection_reason ? (
-              <div className="mt-2 p-3 rounded-lg bg-white/70 border border-rose-200 text-xs text-rose-900">
-                <span className="font-semibold block mb-0.5">سبب الرفض:</span>
-                <span>{request.rejection_reason}</span>
-              </div>
-            ) : (
-              <p className="text-xs text-rose-800 mt-1 leading-relaxed">
-                لم يستوفِ الطلب الشروط المصرفية المحددة أو تبين عدم مطابقة المستندات.
-              </p>
+        <Alert variant="destructive">
+          <AlertDescription>
+            <div className="font-semibold">✕ تم رفض الطلب.</div>
+            {request.rejection_reason && (
+              <div className="mt-1">سبب الرفض: {request.rejection_reason}</div>
             )}
-            <div className="mt-3">
-              <Link to="/requests/new">
-                <Button size="sm" variant="outline" className="text-xs border-rose-300 text-rose-800 hover:bg-rose-100">
-                  تقديم طلب حساب جديد
-                </Button>
-              </Link>
-            </div>
-          </div>
-        </div>
+          </AlertDescription>
+        </Alert>
       )}
 
       {request.status === 'pending_correction' && (
-        <div className="rounded-2xl border border-amber-300 bg-amber-50/80 p-5 shadow-xs flex items-start justify-between gap-4">
-          <div className="flex items-start gap-3">
-            <div className="h-10 w-10 rounded-xl bg-amber-100 text-amber-700 flex items-center justify-center shrink-0">
-              <AlertCircle className="h-5 w-5" />
-            </div>
-            <div>
-              <h3 className="text-sm font-bold text-amber-950">
-                الطلب بانتظار مراجعة وتصحيح البيانات
-              </h3>
-              <p className="text-xs text-amber-800 mt-0.5 leading-relaxed">
-                يرجى الانتقال لصفحة مراجعة البيانات للتحقق من الحقول المستخرجة وتعديل الأخطاء إن وجدت ثم إرسالها للمراجعة.
-              </p>
-            </div>
-          </div>
-          <Link to={`/requests/${request.id}/review`}>
-            <Button size="sm" className="gap-1.5 text-xs shrink-0">
-              <Edit3 className="h-3.5 w-3.5" />
-              مراجعة البيانات
-            </Button>
-          </Link>
-        </div>
+        <Alert variant="warning">
+          <AlertDescription className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
+            <span>! الطلب بانتظار مراجعة البيانات المستخرجة وإرساله للموظف.</span>
+            <Link to={`/requests/${request.id}/review`}>
+              <Button variant="gold" size="sm">
+                مراجعة البيانات
+              </Button>
+            </Link>
+          </AlertDescription>
+        </Alert>
       )}
 
-      {/* Progress Timeline Stepper */}
-      <Card className="border-slate-200 bg-white shadow-xs">
-        <CardContent className="p-6">
-          <h3 className="font-bold text-slate-900 text-base mb-6">مراحل سير الطلب</h3>
+      {request.status === 'pending_upload' && (
+        <Alert variant="warning">
+          <AlertDescription className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
+            <span>! يرجى استكمال رفع المستندات المطلوبة لبدء الفحص.</span>
+            <Link to={`/requests/${request.id}/upload`}>
+              <Button variant="gold" size="sm">
+                رفع المستندات
+              </Button>
+            </Link>
+          </AlertDescription>
+        </Alert>
+      )}
 
-          <div className="relative">
-            <div className="space-y-6">
-              {timelineSteps.map((step, idx) => {
-                const isLast = idx === timelineSteps.length - 1;
-
-                return (
-                  <div key={step.step} className="relative flex items-start gap-4">
-                    {/* Vertical connecting line */}
-                    {!isLast && (
-                      <div
-                        className={`absolute right-4.5 top-9 w-0.5 -bottom-6 ${
-                          step.status === 'completed' ? 'bg-emerald-500' : 'bg-slate-200'
-                        }`}
-                      />
-                    )}
-
-                    {/* Step Icon */}
-                    <div
-                      className={`relative z-10 h-9 w-9 rounded-full flex items-center justify-center font-bold text-xs shrink-0 transition ${
-                        step.status === 'completed'
-                          ? 'bg-emerald-600 text-white shadow-xs'
-                          : step.status === 'current'
-                          ? 'bg-emerald-50 text-emerald-700 ring-2 ring-emerald-500'
-                          : step.status === 'rejected'
-                          ? 'bg-rose-600 text-white shadow-xs'
-                          : 'bg-slate-100 text-slate-400 border border-slate-200'
-                      }`}
-                    >
-                      {step.status === 'completed' ? (
-                        <CheckCircle2 className="h-5 w-5" />
-                      ) : step.status === 'rejected' ? (
-                        <XCircle className="h-5 w-5" />
-                      ) : step.status === 'current' ? (
-                        <Clock className="h-4 w-4 animate-spin text-emerald-700" />
-                      ) : (
-                        step.step
-                      )}
-                    </div>
-
-                    {/* Step Content */}
-                    <div className="flex-1 pt-1 pb-2">
-                      <div className="flex items-center justify-between">
-                        <h4
-                          className={`text-sm font-bold ${
-                            step.status === 'completed'
-                              ? 'text-slate-900'
-                              : step.status === 'current'
-                              ? 'text-emerald-800'
-                              : step.status === 'rejected'
-                              ? 'text-rose-800'
-                              : 'text-slate-500'
-                          }`}
-                        >
-                          {step.label}
-                        </h4>
-
-                        {step.status === 'completed' && (
-                          <Badge variant="success" className="text-[11px] py-0 px-2">
-                            مكتمل
-                          </Badge>
-                        )}
-                        {step.status === 'current' && (
-                          <Badge variant="outline" className="text-[11px] py-0 px-2 text-emerald-700 border-emerald-300 bg-emerald-50">
-                            المرحلة الحالية
-                          </Badge>
-                        )}
-                        {step.status === 'rejected' && (
-                          <Badge variant="destructive" className="text-[11px] py-0 px-2">
-                            مرفوض
-                          </Badge>
-                        )}
-                      </div>
-                      <p className="text-xs text-slate-500 mt-0.5">{step.description}</p>
-                    </div>
-                  </div>
-                );
-              })}
+      {/* Timeline */}
+      <Card className="p-5">
+        <b className="block text-[15px] mb-4">مراحل الطلب</b>
+        <div className="space-y-3">
+          {timelineSteps.map((s) => (
+            <div key={s.step} className="flex items-center justify-between gap-3 py-1.5 border-b border-[var(--line)] last:border-b-0">
+              <div className="flex items-center gap-3">
+                <span
+                  className={`h-7 w-7 rounded-full flex items-center justify-center text-[13px] font-bold shrink-0 ${
+                    s.status === 'completed'
+                      ? 'bg-[var(--ok)] text-white'
+                      : s.status === 'current'
+                      ? 'bg-[var(--teal)] text-white'
+                      : s.status === 'rejected'
+                      ? 'bg-[var(--bad)] text-white'
+                      : 'bg-[var(--bg)] border border-[var(--line)] text-[var(--mut)]'
+                  }`}
+                >
+                  {s.status === 'completed' ? '✓' : s.status === 'rejected' ? '✕' : s.step}
+                </span>
+                <span className={s.status === 'upcoming' ? 'text-[var(--mut)]' : 'font-semibold text-[var(--ink)]'}>
+                  {s.label}
+                </span>
+              </div>
+              {s.status === 'current' && <Badge variant="info">المرحلة الحالية</Badge>}
+              {s.status === 'completed' && <Badge variant="success">✓ مكتمل</Badge>}
+              {s.status === 'rejected' && <Badge variant="destructive">✕ مرفوض</Badge>}
             </div>
-          </div>
-        </CardContent>
+          ))}
+        </div>
       </Card>
 
-      {/* Auto Decision Banner */}
-      {request.auto_decision === 'auto_approved' && (
-        <div className="rounded-2xl border border-emerald-300 bg-emerald-50/80 p-5 shadow-xs flex items-start gap-4">
-          <div className="h-10 w-10 rounded-xl bg-emerald-100 text-emerald-700 flex items-center justify-center shrink-0">
-            <ShieldCheck className="h-6 w-6" />
-          </div>
-          <div className="flex-1">
-            <div className="flex items-center gap-2">
-              <h3 className="text-base font-bold text-emerald-950">
-                {AUTO_DECISION_LABELS.auto_approved}
-              </h3>
-              <Badge variant="success" className="text-xs">
-                مطابق للشروط 100%
-              </Badge>
-            </div>
-            <p className="text-xs text-emerald-800 mt-1 leading-relaxed">
-              اجتازت المستندات كافة قواعد الفحص الآلي بنجاح (سريان البطاقة ومطابقة السن لنوع الحساب).
-            </p>
-          </div>
-        </div>
-      )}
-
-      {request.auto_decision === 'auto_rejected' && (
-        <div className="rounded-2xl border border-rose-300 bg-rose-50/90 p-5 shadow-xs flex items-start gap-4">
-          <div className="h-10 w-10 rounded-xl bg-rose-100 text-rose-700 flex items-center justify-center shrink-0">
-            <ShieldAlert className="h-6 w-6" />
-          </div>
-          <div className="flex-1">
-            <div className="flex items-center gap-2">
-              <h3 className="text-base font-bold text-rose-950">
-                {AUTO_DECISION_LABELS.auto_rejected}
-              </h3>
-              <Badge variant="destructive" className="text-xs">
-                غير مستوفٍ للشروط
-              </Badge>
-            </div>
-            <p className="text-xs text-rose-800 mt-1 leading-relaxed">
-              أظهر الفحص الآلي وجود شروط غير مستوفاة في المستندات المرفقة (مثل انتهاء الصلاحية أو عدم مطابقة السن).
-            </p>
-          </div>
-        </div>
-      )}
-
-      {!request.auto_decision && (request.status === 'processing' || request.status === 'pending_upload') && (
-        <div className="rounded-2xl border border-slate-200 bg-slate-50 p-4 shadow-xs flex items-start gap-3">
-          <Clock className="h-5 w-5 text-slate-500 shrink-0 mt-0.5" />
-          <div>
-            <h4 className="text-sm font-semibold text-slate-800">القرار الآلي: قيد التقييم الآلي</h4>
-            <p className="text-xs text-slate-500 mt-0.5">
-              سيتم احتساب القرار الآلي فور استكمال رفع ومعالجة المستندات المطلوبة.
-            </p>
-          </div>
-        </div>
-      )}
-
-      {/* Validation Results Badges */}
+      {/* Validation Results */}
       {request.validation_results && request.validation_results.length > 0 && (
-        <Card className="border-slate-200 bg-white shadow-xs">
-          <CardContent className="p-5">
-            <h3 className="font-bold text-slate-900 text-sm mb-3">نتائج الفحص والتحقق الآلي</h3>
-            <div className="grid grid-cols-1 md:grid-cols-3 gap-3">
-              {request.validation_results.map((vr) => (
-                <ValidationBadge key={vr.id || vr.rule_name} validation={vr} />
-              ))}
-            </div>
-          </CardContent>
+        <Card className="p-5">
+          <b className="block text-[15px] mb-2">نتائج الفحص</b>
+          {request.validation_results.map((vr) => (
+            <ValidationBadge key={vr.id || vr.rule_name} validation={vr} />
+          ))}
         </Card>
       )}
 
-      {/* Uploaded Documents Thumbnails */}
+      {/* Documents */}
       {request.documents && request.documents.length > 0 && (
-        <Card className="border-slate-200 bg-white shadow-xs">
-          <CardContent className="p-5">
-            <div className="flex items-center justify-between mb-4 pb-2 border-b border-slate-100">
-              <h3 className="font-bold text-slate-900 text-sm">المستندات المرفقة بالطلب ({request.documents.length})</h3>
-              {request.status === 'pending_upload' && (
-                <Link to={`/requests/${request.id}/upload`}>
-                  <Button size="sm" variant="outline" className="text-xs gap-1">
-                    <Upload className="h-3.5 w-3.5" />
-                    استكمال الرفع
-                  </Button>
-                </Link>
-              )}
-            </div>
-
-            <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-4">
-              {request.documents.map((doc) => {
-                const rawUrl = doc.image_url || doc.file_path;
-                const imgUrl = rawUrl ? resolveImageUrl(rawUrl) : null;
-
-                return (
-                  <div
-                    key={doc.id}
-                    className="rounded-xl border border-slate-200 bg-slate-50/50 p-3 flex flex-col justify-between"
-                  >
-                    <div>
-                      <div className="flex items-center justify-between mb-2">
-                        <span className="text-xs font-semibold text-slate-800 truncate">
-                          {DOCUMENT_TYPE_LABELS[doc.document_type] || doc.document_type}
-                        </span>
-                        {doc.ocr_completed ? (
-                          <Badge variant="success" className="text-[10px] py-0 px-1.5">
-                            OCR مكتمل
-                          </Badge>
-                        ) : (
-                          <Badge variant="outline" className="text-[10px] py-0 px-1.5 text-slate-500">
-                            مرفوع
-                          </Badge>
-                        )}
-                      </div>
-
-                      {imgUrl && !failedImages[doc.id] ? (
-                        <div
-                          className="relative h-28 w-full rounded-lg bg-slate-100 border border-slate-200 overflow-hidden cursor-pointer group"
-                          onClick={() => setPreviewImage(imgUrl)}
-                        >
-                          <img
-                            src={imgUrl}
-                            alt={doc.document_type}
-                            onError={() => setFailedImages((prev) => ({ ...prev, [doc.id]: true }))}
-                            className="h-full w-full object-cover transition duration-200 group-hover:scale-105"
-                          />
-                          <div className="absolute inset-0 bg-black/30 opacity-0 group-hover:opacity-100 transition-opacity flex items-center justify-center text-white text-xs gap-1">
-                            <Eye className="h-4 w-4" />
-                            <span>معاينة</span>
-                          </div>
-                        </div>
-                      ) : (
-                        <div className="h-28 w-full rounded-lg bg-slate-100 border border-slate-200 flex flex-col items-center justify-center text-slate-400 p-2 text-center">
-                          <AlertCircle className="h-6 w-6 text-amber-500 mb-1" />
-                          <span className="text-[11px] text-slate-600 font-medium">تعذر تحميل المعاينة</span>
-                        </div>
-                      )}
+        <Card className="p-5">
+          <b className="block text-[15px] mb-3">المستندات المرفقة ({request.documents.length})</b>
+          <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-4">
+            {request.documents.map((doc) => {
+              const rawUrl = doc.image_url || doc.file_path;
+              const imgUrl = rawUrl ? resolveImageUrl(rawUrl) : null;
+              const label = DOCUMENT_TYPE_LABELS[doc.document_type] || doc.document_type;
+              return (
+                <div
+                  key={doc.id}
+                  className="rounded-[12px] border border-[var(--line)] bg-[var(--bg)]/60 p-3 space-y-2"
+                >
+                  <div className="text-[13px] font-semibold text-[var(--ink)]">{label}</div>
+                  {imgUrl && (
+                    <div
+                      onClick={() => setPreviewImage(imgUrl)}
+                      className="h-32 rounded-[8px] border border-[var(--line)] bg-white overflow-hidden cursor-pointer"
+                    >
+                      <img src={imgUrl} alt={label} className="h-full w-full object-cover" />
                     </div>
-
-                    <div className="mt-2.5 pt-2 border-t border-slate-200/60 flex items-center justify-between text-[11px] text-slate-400">
-                      <span>مسار الملف:</span>
-                      <span className="font-mono text-slate-500 truncate max-w-[120px]">
-                        {doc.file_path}
-                      </span>
-                    </div>
-                  </div>
-                );
-              })}
-            </div>
-          </CardContent>
+                  )}
+                </div>
+              );
+            })}
+          </div>
         </Card>
       )}
-
-      {/* Quick Navigation Footer */}
-      <div className="flex items-center justify-between pt-2">
-        <Link to="/dashboard">
-          <Button variant="outline" size="sm">
-            الرجوع إلى قائمة الطلبات
-          </Button>
-        </Link>
-
-        {(request.status === 'pending_correction' || request.status === 'processing') && (
-          <Link to={`/requests/${request.id}/review`}>
-            <Button size="sm" className="gap-1.5 text-xs">
-              <Edit3 className="h-3.5 w-3.5" />
-              مراجعة وتعديل البيانات
-            </Button>
-          </Link>
-        )}
-
-        {request.status === 'pending_upload' && (
-          <Link to={`/requests/${request.id}/upload`}>
-            <Button size="sm" className="gap-1.5 text-xs">
-              <Upload className="h-3.5 w-3.5" />
-              رفع المستندات المطلوبة
-            </Button>
-          </Link>
-        )}
-      </div>
 
       {/* Image Preview Modal */}
       {previewImage && (
         <div
-          className="fixed inset-0 z-50 flex items-center justify-center bg-black/75 p-4 backdrop-blur-xs"
+          className="fixed inset-0 z-50 flex items-center justify-center bg-[#0a2827]/65 p-4"
           onClick={() => setPreviewImage(null)}
         >
           <div
-            className="relative max-w-3xl max-h-[90vh] bg-white rounded-2xl overflow-hidden shadow-2xl p-4 flex flex-col"
+            className="relative max-w-3xl w-full max-h-[90vh] bg-[var(--card)] border border-[var(--line)] rounded-[14px] p-4 flex flex-col"
             onClick={(e) => e.stopPropagation()}
-            dir="rtl"
           >
-            <div className="flex items-center justify-between pb-3 border-b border-slate-100">
-              <h4 className="font-semibold text-slate-900">معاينة المستند المرفق</h4>
-              <Button
-                variant="ghost"
-                size="sm"
-                onClick={() => setPreviewImage(null)}
-                className="h-8 px-2 text-slate-500 hover:text-slate-800"
-              >
+            <div className="flex items-center justify-between pb-3 border-b border-[var(--line)]">
+              <b>معاينة المستند</b>
+              <Button variant="outline" size="sm" onClick={() => setPreviewImage(null)}>
                 إغلاق ✕
               </Button>
             </div>
             <div className="overflow-auto mt-3 flex items-center justify-center max-h-[75vh]">
-              <img
-                src={previewImage}
-                alt="المستند"
-                className="max-h-[75vh] w-auto rounded-lg object-contain"
-              />
+              <img src={previewImage} alt="المستند" className="max-h-[75vh] w-auto rounded-[10px] object-contain" />
             </div>
           </div>
         </div>
       )}
+
       {/* Delete Confirmation Dialog */}
       <Dialog
         open={isDeleteDialogOpen}
         onClose={() => !isDeleting && setIsDeleteDialogOpen(false)}
         title="تأكيد حذف الطلب"
-        description="يرجى الانتباه إلى أن هذا الإجراء نهائي ولا يمكن التراجع عنه."
+        description={`سيتم حذف الطلب #${shortId} وكافة المستندات المرفقة به نهائياً.`}
       >
-        <div className="space-y-4 pt-2">
-          <div className="rounded-lg bg-rose-50 border border-rose-200 p-3 text-xs text-rose-900 leading-relaxed">
-            هل أنت متأكد من رغبتك في حذف هذا الطلب{' '}
-            <strong className="font-mono font-bold">#{shortId}</strong>؟ سيتم حذف جميع
-            الملفات المرفوعة والمستندات والبيانات المستخرجة المرتبطة به نهائياً.
-          </div>
-
-          <div className="flex items-center justify-end gap-2 pt-3 border-t border-slate-100">
-            <Button
-              type="button"
-              variant="outline"
-              onClick={() => setIsDeleteDialogOpen(false)}
-              disabled={isDeleting}
-              className="text-xs"
-            >
-              إلغاء
-            </Button>
-            <Button
-              type="button"
-              variant="destructive"
-              onClick={handleDelete}
-              disabled={isDeleting}
-              className="text-xs gap-1.5"
-            >
-              {isDeleting ? (
-                <>
-                  <Loader2 className="h-3.5 w-3.5 animate-spin" />
-                  <span>جاري الحذف...</span>
-                </>
-              ) : (
-                <>
-                  <Trash2 className="h-3.5 w-3.5" />
-                  <span>تأكيد الحذف نهائياً</span>
-                </>
-              )}
-            </Button>
-          </div>
+        <div className="flex items-center justify-end gap-3 mt-4">
+          <Button variant="outline" onClick={() => setIsDeleteDialogOpen(false)} disabled={isDeleting}>
+            إلغاء
+          </Button>
+          <Button variant="destructive" onClick={handleDelete} isLoading={isDeleting}>
+            تأكيد الحذف
+          </Button>
         </div>
       </Dialog>
     </div>
