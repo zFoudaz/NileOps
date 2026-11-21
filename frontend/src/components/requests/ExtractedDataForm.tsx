@@ -1,11 +1,10 @@
 import React, { useState, useMemo } from 'react';
-import { Lock, Save, AlertCircle, CheckCircle2, Loader2, Sparkles, UserCheck } from 'lucide-react';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import type { Document, DocumentExtractedData, ValidationResult } from '@/types';
-import { FIELD_LABELS, DOCUMENT_TYPE_LABELS } from '@/lib/constants';
+import { FIELD_LABELS } from '@/lib/constants';
 import { decodeEgyptianNationalId } from '@/lib/nationalId';
 import { useRequests } from '@/hooks/useRequests';
 import { useToast } from '@/hooks/useToast';
@@ -18,6 +17,8 @@ interface ExtractedDataFormProps {
   onSaved?: (updatedDoc: Document) => void | Promise<void>;
   isReadOnly?: boolean;
 }
+
+const LTR_FIELDS = new Set(['national_id', 'father_national_id', 'child_national_id', 'expiry_date', 'date_of_birth', 'dob']);
 
 export const ExtractedDataForm: React.FC<ExtractedDataFormProps> = ({
   requestId,
@@ -64,12 +65,10 @@ export const ExtractedDataForm: React.FC<ExtractedDataFormProps> = ({
     return { ...currentMerged, ...overrides };
   }, [currentMerged, overrides]);
 
-  // Decode national ID if present
   const nationalIdVal =
     formValues.national_id || formValues.father_national_id || formValues.child_national_id;
   const decodedId = nationalIdVal ? decodeEgyptianNationalId(nationalIdVal) : null;
 
-  // Identify fields with validation warnings
   const mismatchFields = new Set<string>();
   for (const vr of validationResults) {
     if (!vr.passed) {
@@ -106,7 +105,6 @@ export const ExtractedDataForm: React.FC<ExtractedDataFormProps> = ({
     e.preventDefault();
     if (dirtyFields.size === 0 || isReadOnly) return;
 
-    // Filter out expiry_date explicitly per Global Constraints
     const correctedPayload: Record<string, string> = {};
     for (const key of dirtyFields) {
       if (key.toLowerCase() !== 'expiry_date') {
@@ -131,7 +129,6 @@ export const ExtractedDataForm: React.FC<ExtractedDataFormProps> = ({
       toast({
         variant: 'success',
         title: 'تم حفظ التعديلات بنجاح',
-        description: 'تم تحديث البيانات المستخرجة للمستند وسيتم اعتمادها في الفحص.',
       });
     } catch (err: unknown) {
       const msg = err instanceof Error ? err.message : 'فشل في حفظ التعديلات';
@@ -145,164 +142,114 @@ export const ExtractedDataForm: React.FC<ExtractedDataFormProps> = ({
 
   const fieldKeys = Object.keys(formValues);
 
-  return (
-    <form onSubmit={handleSave} className="space-y-6">
-      <div className="flex items-center justify-between border-b border-slate-100 pb-3">
-        <div className="flex items-center gap-2">
-          <Sparkles className="h-4 w-4 text-emerald-600" />
-          <h3 className="font-semibold text-slate-800 text-sm">
-            البيانات المستخرجة ({DOCUMENT_TYPE_LABELS[docExtractedData.document_type] || docExtractedData.document_type})
-          </h3>
-        </div>
-        <span className="text-xs text-slate-400">
-          {fieldKeys.length} حقول مستخرجة
-        </span>
+  if (fieldKeys.length === 0) {
+    return (
+      <div className="py-6 text-center text-sm text-[var(--mut)]">
+        {docExtractedData.ocr_required === false
+          ? 'هذا المستند للمراجعة البصرية فقط (بدون OCR).'
+          : 'لم يتم استخراج بيانات نصية من هذا المستند.'}
       </div>
+    );
+  }
 
-      {fieldKeys.length === 0 ? (
-        <div className="text-center py-8 text-slate-400 text-sm">
-          لم يتم استخراج بيانات نصية من هذا المستند بعد.
-        </div>
-      ) : (
-        <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-          {fieldKeys.map((key) => {
-            const isLocked =
-              key.toLowerCase() === 'expiry_date' ||
-              docExtractedData.editable_flags?.[key] === false ||
-              isReadOnly;
-            const isMismatch = mismatchFields.has(key);
-            const isDirty = dirtyFields.has(key);
-            const labelText = FIELD_LABELS[key] || key;
+  return (
+    <form onSubmit={handleSave} className="space-y-4">
+      {fieldKeys.map((key) => {
+        const isExpiry = key.toLowerCase() === 'expiry_date';
+        const isLocked =
+          isExpiry || docExtractedData.editable_flags?.[key] === false || isReadOnly;
+        const isMismatch = mismatchFields.has(key);
+        const isDirty = dirtyFields.has(key);
+        const isLtr = LTR_FIELDS.has(key.toLowerCase());
+        const labelText = (FIELD_LABELS[key] || key).replace(' (غير قابل للتعديل)', '');
+        const originalOcr = docExtractedData.extracted_data?.[key];
+        const showOcrHint =
+          originalOcr !== undefined &&
+          originalOcr !== null &&
+          (isMismatch || String(originalOcr) !== String(formValues[key] || ''));
 
-            return (
-              <div
-                key={key}
-                className={cn(
-                  'rounded-lg border p-3 transition',
-                  isMismatch
-                    ? 'border-rose-300 bg-rose-50/30'
-                    : isDirty
-                    ? 'border-amber-300 bg-amber-50/20'
-                    : 'border-slate-200 bg-white'
-                )}
-              >
-                <div className="flex items-center justify-between mb-1.5">
-                  <Label htmlFor={`field-${key}`} className="text-xs font-semibold text-slate-700">
-                    {labelText}
-                  </Label>
-                  {isLocked && (
-                    <Badge variant="outline" className="text-[11px] gap-1 text-slate-500 bg-slate-100 border-slate-300">
-                      <Lock className="h-2.5 w-2.5" />
-                      مقفل
-                    </Badge>
-                  )}
-                  {isMismatch && (
-                    <Badge variant="destructive" className="text-[10px] py-0 px-1.5">
-                      تنبيه مطابقة
-                    </Badge>
-                  )}
-                </div>
+        return (
+          <div key={key}>
+            <Label htmlFor={`field-${docId}-${key}`} className="flex items-center gap-2 flex-wrap">
+              <span>{labelText}</span>
+              {isLocked && (
+                <Badge variant="info" className="text-[12px] py-0.5 px-2">
+                  🔒 مقفل
+                </Badge>
+              )}
+              {isMismatch && (
+                <Badge variant="warning" className="text-[12px] py-0.5 px-2">
+                  ! تحتاج مراجعة
+                </Badge>
+              )}
+            </Label>
 
-                <div className="relative">
-                  <Input
-                    id={`field-${key}`}
-                    value={formValues[key] || ''}
-                    disabled={isLocked || isLoading}
-                    onChange={(e) => handleFieldChange(key, e.target.value)}
-                    dir="auto"
-                    className={cn(
-                      'text-sm font-medium',
-                      isLocked && 'bg-slate-100/70 text-slate-600 cursor-not-allowed border-dashed',
-                      isMismatch && 'border-rose-400 focus-visible:ring-rose-400',
-                      isDirty && 'border-amber-400 focus-visible:ring-amber-400'
-                    )}
-                  />
-                </div>
+            <Input
+              id={`field-${docId}-${key}`}
+              value={formValues[key] || ''}
+              readOnly={isLocked}
+              disabled={isLoading}
+              onChange={(e) => handleFieldChange(key, e.target.value)}
+              dir={isLtr ? 'ltr' : 'auto'}
+              className={cn(
+                isLtr && 'text-end tracking-wider',
+                isLocked && 'bg-[var(--locked-bg)] border-[var(--locked-border)] cursor-not-allowed',
+                !isLocked && (isMismatch || isDirty) && 'border-2 border-[var(--warn)] bg-[var(--warn-bg)]'
+              )}
+            />
 
-                {isLocked && key.toLowerCase() === 'expiry_date' && (
-                  <p className="text-[11px] text-slate-400 mt-1 flex items-center gap-1">
-                    <Lock className="h-3 w-3 text-slate-400 shrink-0" />
-                    تاريخ انتهاء بطاقة الرقم القومي مقفل ومحمي أمنياً ضد التعديل اليدوي
-                  </p>
-                )}
-
-                {isMismatch && (
-                  <p className="text-[11px] text-rose-600 mt-1 flex items-center gap-1">
-                    <AlertCircle className="h-3 w-3 text-rose-500 shrink-0" />
-                    تحقق من صحة هذه القيمة ومطابقتها للشروط المصرفية
-                  </p>
-                )}
+            {showOcrHint && (
+              <div className="text-[13px] text-[var(--mut)] mt-1">
+                القراءة الأصلية (OCR):{' '}
+                <span className={isLtr ? 'ltr' : ''}>{String(originalOcr)}</span>
               </div>
-            );
-          })}
-        </div>
-      )}
+            )}
+          </div>
+        );
+      })}
 
-      {/* Decoded National ID Info Card */}
+      {/* Compact Decoded National ID Strip */}
       {decodedId && decodedId.isValid && (
-        <div className="rounded-xl border border-emerald-200 bg-emerald-50/50 p-4">
-          <div className="flex items-center gap-2 mb-3 text-emerald-800 font-semibold text-xs">
-            <UserCheck className="h-4 w-4" />
-            <span>بيانات مستنتجة ومحققة آلياً من الرقم القومي:</span>
-          </div>
-
-          <div className="grid grid-cols-2 sm:grid-cols-4 gap-3 text-xs">
-            <div className="rounded-md bg-white p-2.5 border border-emerald-100 shadow-2xs">
-              <span className="text-slate-400 block mb-0.5">تاريخ الميلاد</span>
-              <span className="font-semibold text-slate-800">{decodedId.dateOfBirth}</span>
+        <div className="rounded-[12px] border border-[var(--line)] bg-[var(--bg)] p-3 text-[13px]">
+          <div className="font-semibold text-[var(--teal)] mb-2">بيانات مستنتجة من الرقم القومي</div>
+          <div className="grid grid-cols-2 sm:grid-cols-4 gap-2">
+            <div>
+              <span className="text-[var(--mut)] block text-[12px]">تاريخ الميلاد</span>
+              <b className="ltr">{decodedId.dateOfBirth}</b>
             </div>
-
-            <div className="rounded-md bg-white p-2.5 border border-emerald-100 shadow-2xs">
-              <span className="text-slate-400 block mb-0.5">العمر المحسوب</span>
-              <span className="font-semibold text-slate-800">{decodedId.age} سنة</span>
+            <div>
+              <span className="text-[var(--mut)] block text-[12px]">العمر</span>
+              <b>{decodedId.age} سنة</b>
             </div>
-
-            <div className="rounded-md bg-white p-2.5 border border-emerald-100 shadow-2xs">
-              <span className="text-slate-400 block mb-0.5">النوع</span>
-              <span className="font-semibold text-slate-800">{decodedId.gender}</span>
+            <div>
+              <span className="text-[var(--mut)] block text-[12px]">النوع</span>
+              <b>{decodedId.gender}</b>
             </div>
-
-            <div className="rounded-md bg-white p-2.5 border border-emerald-100 shadow-2xs">
-              <span className="text-slate-400 block mb-0.5">محافظة الإقامة</span>
-              <span className="font-semibold text-slate-800">{decodedId.governorate}</span>
+            <div>
+              <span className="text-[var(--mut)] block text-[12px]">المحافظة</span>
+              <b>{decodedId.governorate}</b>
             </div>
           </div>
         </div>
       )}
 
-      {!isReadOnly && fieldKeys.length > 0 && (
-        <div className="flex items-center justify-between pt-2 border-t border-slate-100">
-          <div className="text-xs">
-            {saveSuccess && (
-              <span className="text-emerald-700 flex items-center gap-1 font-medium">
-                <CheckCircle2 className="h-4 w-4" />
-                تم حفظ وتحديث التعديلات بنجاح
+      {!isReadOnly && (dirtyFields.size > 0 || saveSuccess) && (
+        <div className="flex items-center justify-between gap-3 pt-2 border-t border-[var(--line)] flex-wrap">
+          <div className="text-[13px]">
+            {dirtyFields.size > 0 ? (
+              <span className="text-[var(--warn)] font-semibold">
+                لديك {dirtyFields.size} تعديل غير محفوظ
               </span>
-            )}
-            {dirtyFields.size > 0 && (
-              <span className="text-amber-700 font-medium">
-                لديك {dirtyFields.size} تعديلات غير محفوظة
-              </span>
-            )}
+            ) : saveSuccess ? (
+              <span className="text-[var(--ok)] font-semibold">✓ تم حفظ التعديلات</span>
+            ) : null}
           </div>
 
-          <Button
-            type="submit"
-            disabled={dirtyFields.size === 0 || isLoading}
-            className="gap-2 font-medium"
-          >
-            {isLoading ? (
-              <>
-                <Loader2 className="h-4 w-4 animate-spin" />
-                جاري الحفظ...
-              </>
-            ) : (
-              <>
-                <Save className="h-4 w-4" />
-                حفظ التعديلات
-              </>
-            )}
-          </Button>
+          {dirtyFields.size > 0 && (
+            <Button type="submit" size="sm" isLoading={isLoading}>
+              حفظ التعديلات
+            </Button>
+          )}
         </div>
       )}
     </form>

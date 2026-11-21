@@ -92,13 +92,13 @@ export const SelectTrigger = React.forwardRef<
       aria-expanded={context.open}
       onClick={() => context.setOpen((prev) => !prev)}
       className={cn(
-        'flex h-10 w-full items-center justify-between rounded-lg border border-slate-300 bg-white px-3 py-2 text-sm text-slate-900 placeholder:text-slate-400 focus:outline-none focus:ring-2 focus:ring-emerald-500 focus:border-emerald-500 disabled:cursor-not-allowed disabled:opacity-50 text-right',
+        'flex min-h-[44px] w-full items-center justify-between rounded-[10px] border-[1.5px] border-[var(--input-border)] bg-white px-3 py-2 text-[14px] text-[var(--ink)] disabled:cursor-not-allowed disabled:opacity-50 text-right',
         className
       )}
       {...props}
     >
       <span className="truncate">{children}</span>
-      <ChevronDown className="h-4 w-4 opacity-50 shrink-0 ml-2" />
+      <ChevronDown className="h-4 w-4 text-[var(--mut)] shrink-0 mr-2" />
     </button>
   );
 });
@@ -114,7 +114,7 @@ export const SelectValue: React.FC<{
   const display = context.labels[context.value] || context.value || placeholder;
 
   return (
-    <span className={cn('text-sm', !context.value && 'text-slate-400', className)}>
+    <span className={cn('text-[14px]', !context.value && 'text-[var(--mut)]', className)}>
       {display}
     </span>
   );
@@ -132,7 +132,7 @@ export const SelectContent: React.FC<{
   return (
     <div
       className={cn(
-        'absolute z-50 mt-1 max-h-60 w-full overflow-auto rounded-lg border border-slate-200 bg-white p-1 shadow-lg animate-in fade-in-80 text-right',
+        'absolute z-50 mt-1 max-h-60 w-full overflow-auto rounded-[10px] border border-[var(--line)] bg-[var(--card)] p-1 shadow-lg text-right',
         className
       )}
     >
@@ -172,14 +172,14 @@ export const SelectItem: React.FC<{
       aria-selected={isSelected}
       onClick={handleSelect}
       className={cn(
-        'relative flex w-full cursor-pointer select-none items-center justify-between rounded-md py-2 px-3 text-sm outline-none transition-colors hover:bg-slate-100 hover:text-slate-900',
-        isSelected && 'bg-emerald-50 text-emerald-800 font-medium',
+        'relative flex w-full cursor-pointer select-none items-center justify-between rounded-[8px] py-2 px-3 text-[14px] outline-none transition-colors hover:bg-[var(--hover-row)] text-[var(--ink)]',
+        isSelected && 'bg-[var(--in-bg)] text-[var(--teal)] font-semibold',
         disabled && 'pointer-events-none opacity-50',
         className
       )}
     >
       <span className="truncate">{children}</span>
-      {isSelected && <Check className="h-4 w-4 text-emerald-600 shrink-0" />}
+      {isSelected && <Check className="h-4 w-4 text-[var(--teal)] shrink-0" />}
     </div>
   );
 };

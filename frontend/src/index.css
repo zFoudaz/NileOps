@@ -1,11 +1,66 @@
 @import "tailwindcss";
 
+:root {
+  --ink: #14302f;
+  --teal: #0e4f4c;
+  --teal2: #0a3837;
+  --gold: #b8862b;
+  --gold-light: #e6c06a;
+  --goldtx: #6e5010;
+  --bg: #f6f1e7;
+  --card: #fffdf8;
+  --line: #ddd3bf;
+  --ok: #1b6b3a;
+  --ok-bg: #e6f3ea;
+  --bad: #a12a2a;
+  --bad-bg: #f8e8e8;
+  --warn: #8a5a00;
+  --warn-bg: #fbf0d8;
+  --warn-ink: #5c3b00;
+  --in-bg: #e3f0ef;
+  --mut: #5a615f;
+  --input-border: #8d8470;
+  --locked-bg: #ece4d0;
+  --locked-border: #b8b09a;
+  --hover-row: #f0e9d9;
+}
+
 @layer base {
   * {
     box-sizing: border-box;
   }
+
+  html,
   body {
+    margin: 0;
     direction: rtl;
     text-align: right;
+    font-family: 'IBM Plex Sans Arabic', system-ui, -apple-system, sans-serif;
+    color: var(--ink);
+    background-color: var(--bg);
   }
+
+  button {
+    font-family: inherit;
+    cursor: pointer;
+  }
+
+  :focus-visible {
+    outline: 3px solid var(--gold);
+    outline-offset: 2px;
+  }
+}
+
+.ltr {
+  direction: ltr;
+  unicode-bidi: isolate;
+  display: inline-block;
+  font-variant-numeric: tabular-nums;
+}
+
+.pat {
+  background-color: var(--teal);
+  background-image:
+    repeating-linear-gradient(45deg, rgba(255, 255, 255, 0.05) 0 2px, transparent 2px 22px),
+    repeating-linear-gradient(-45deg, rgba(184, 134, 43, 0.18) 0 2px, transparent 2px 22px);
 }

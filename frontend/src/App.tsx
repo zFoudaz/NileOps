@@ -20,9 +20,9 @@ const RootRedirect: React.FC = () => {
 
   if (isLoading) {
     return (
-      <div className="min-h-screen flex flex-col items-center justify-center bg-slate-50 gap-3" dir="rtl">
-        <Loader2 className="h-8 w-8 animate-spin text-emerald-600" />
-        <span className="text-sm font-medium text-slate-600">جاري التحميل...</span>
+      <div className="min-h-screen flex flex-col items-center justify-center bg-[var(--bg)] gap-3" dir="rtl">
+        <Loader2 className="h-8 w-8 animate-spin text-[var(--teal)]" />
+        <span className="text-sm font-medium text-[var(--mut)]">جاري التحميل...</span>
       </div>
     );
   }
@@ -43,9 +43,9 @@ const PublicOnlyRoute: React.FC<{ children: React.ReactNode }> = ({ children }) 
 
   if (isLoading) {
     return (
-      <div className="min-h-screen flex flex-col items-center justify-center bg-slate-50 gap-3" dir="rtl">
-        <Loader2 className="h-8 w-8 animate-spin text-emerald-600" />
-        <span className="text-sm font-medium text-slate-600">جاري التحميل...</span>
+      <div className="min-h-screen flex flex-col items-center justify-center bg-[var(--bg)] gap-3" dir="rtl">
+        <Loader2 className="h-8 w-8 animate-spin text-[var(--teal)]" />
+        <span className="text-sm font-medium text-[var(--mut)]">جاري التحميل...</span>
       </div>
     );
   }

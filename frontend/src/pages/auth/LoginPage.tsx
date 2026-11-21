@@ -4,9 +4,7 @@ import { useAuth } from '@/hooks/useAuth';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
-import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from '@/components/ui/card';
 import { Alert, AlertDescription } from '@/components/ui/alert';
-import { Landmark, LogIn } from 'lucide-react';
 import axios from 'axios';
 
 export const LoginPage: React.FC = () => {
@@ -44,7 +42,11 @@ export const LoginPage: React.FC = () => {
       if (axios.isAxiosError(err)) {
         const detail = err.response?.data?.detail;
         if (typeof detail === 'string') {
-          setError(detail === 'Invalid email or password' ? 'البريد الإلكتروني أو كلمة المرور غير صحيحة' : detail);
+          setError(
+            detail === 'Invalid email or password'
+              ? 'البريد الإلكتروني أو كلمة المرور غير صحيحة'
+              : detail
+          );
         } else {
           setError('فشل تسجيل الدخول. يرجى التحقق من صحة البيانات والمحاولة مجدداً.');
         }
@@ -59,84 +61,88 @@ export const LoginPage: React.FC = () => {
   };
 
   return (
-    <div className="min-h-screen flex items-center justify-center bg-slate-50 p-4" dir="rtl">
-      <div className="w-full max-w-md">
-        <div className="flex flex-col items-center mb-6">
-          <div className="h-12 w-12 rounded-xl bg-emerald-600 flex items-center justify-center text-white shadow-md mb-3">
-            <Landmark className="h-6 w-6" />
-          </div>
-          <h1 className="text-2xl font-bold text-slate-900">نايل أوبس | NileOps</h1>
-          <p className="text-sm text-slate-500 mt-1">منظومة فتح الحسابات البنكية الرقمية</p>
+    <div className="min-h-screen flex flex-wrap bg-[var(--bg)] text-[var(--ink)]" dir="rtl">
+      {/* Brand Panel */}
+      <div className="pat flex-1 basis-[420px] text-white p-8 sm:p-14 flex flex-col justify-between gap-10 min-h-[280px] lg:min-h-screen">
+        <div className="text-[26px] sm:text-[30px] font-bold tracking-wide">
+          بنك نايل أوبس <span className="text-[var(--gold-light)]">NileOps</span>
         </div>
 
-        <Card className="shadow-lg border-slate-200">
-          <CardHeader className="text-center pb-4">
-            <CardTitle className="text-xl">تسجيل الدخول</CardTitle>
-            <CardDescription>أدخل بيانات اعتمادك للمتابعة إلى حسابك</CardDescription>
-          </CardHeader>
+        <div>
+          <h1 className="text-[30px] sm:text-[42px] font-bold leading-[1.3] mb-3.5">
+            مستنداتك تُقرأ بالذكاء الاصطناعي،
+            <br />
+            وقرارك يبقى بيد الموظف.
+          </h1>
+          <p className="text-[16px] sm:text-[18px] max-w-[460px] text-[#d6e6e4] leading-relaxed">
+            قدّم طلبك من هاتفك في دقائق، وتابع كل مرحلة بوضوح وأمان.
+          </p>
+        </div>
 
-          <CardContent>
-            {error && (
-              <div className="mb-4">
-                <Alert variant="destructive">
-                  <AlertDescription>{error}</AlertDescription>
-                </Alert>
-              </div>
-            )}
+        <div className="text-[14px] text-[#d6e6e4]">
+          اتصال مشفّر · مراجعة بشرية نهائية لكل طلب
+        </div>
+      </div>
 
-            <form onSubmit={handleSubmit} className="space-y-4">
-              <div>
-                <Label htmlFor="email" required>
-                  البريد الإلكتروني
-                </Label>
-                <Input
-                  id="email"
-                  type="email"
-                  placeholder="name@example.com"
-                  value={email}
-                  onChange={(e) => setEmail(e.target.value)}
-                  dir="ltr"
-                  className="text-left font-mono"
-                  required
-                  autoComplete="email"
-                  disabled={isLoading}
-                />
-              </div>
+      {/* Form Panel */}
+      <div className="flex-1 basis-[420px] flex items-center justify-center p-6 sm:p-10">
+        <div className="w-full max-w-[400px]">
+          <h2 className="text-[28px] font-bold mb-1.5">تسجيل الدخول</h2>
+          <p className="text-[var(--mut)] mb-6">أهلاً بعودتك. أدخل بياناتك للمتابعة.</p>
 
-              <div>
-                <Label htmlFor="password" required>
-                  كلمة المرور
-                </Label>
-                <Input
-                  id="password"
-                  type="password"
-                  placeholder="••••••••"
-                  value={password}
-                  onChange={(e) => setPassword(e.target.value)}
-                  dir="ltr"
-                  className="text-left font-mono"
-                  required
-                  autoComplete="current-password"
-                  disabled={isLoading}
-                />
-              </div>
+          {error && (
+            <Alert variant="destructive" className="mb-5">
+              <AlertDescription>{error}</AlertDescription>
+            </Alert>
+          )}
 
-              <Button type="submit" className="w-full mt-2" isLoading={isLoading}>
-                <LogIn className="h-4 w-4 ml-1" />
+          <form onSubmit={handleSubmit} className="space-y-4">
+            <div>
+              <Label htmlFor="em">البريد الإلكتروني</Label>
+              <Input
+                id="em"
+                type="email"
+                placeholder="name@example.com"
+                value={email}
+                onChange={(e) => setEmail(e.target.value)}
+                dir="ltr"
+                className="text-end"
+                required
+                autoComplete="email"
+                disabled={isLoading}
+              />
+            </div>
+
+            <div>
+              <Label htmlFor="pw">كلمة المرور</Label>
+              <Input
+                id="pw"
+                type="password"
+                placeholder="••••••••"
+                value={password}
+                onChange={(e) => setPassword(e.target.value)}
+                dir="ltr"
+                className="text-end"
+                required
+                autoComplete="current-password"
+                disabled={isLoading}
+              />
+            </div>
+
+            <div className="pt-2">
+              <Button type="submit" className="w-full" isLoading={isLoading}>
                 تسجيل الدخول
               </Button>
-            </form>
-          </CardContent>
+            </div>
+          </form>
 
-          <CardFooter className="flex flex-col gap-3 text-center border-t border-slate-100 pt-4">
-            <p className="text-sm text-slate-600">
-              ليس لديك حساب؟{' '}
-              <Link to="/register" className="font-semibold text-emerald-600 hover:text-emerald-700 underline">
-                إنشاء حساب جديد
-              </Link>
-            </p>
-          </CardFooter>
-        </Card>
+          <p className="text-[14px] mt-5 text-[var(--ink)]">
+            ليس لديك حساب؟{' '}
+            <Link to="/register" className="text-[var(--teal)] font-semibold hover:underline">
+              إنشاء حساب جديد
+            </Link>
+          </p>
+        </div>
       </div>
     </div>
   );

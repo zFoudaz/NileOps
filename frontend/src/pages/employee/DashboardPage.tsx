@@ -1,23 +1,7 @@
 import React, { useState, useEffect, useMemo, useCallback } from 'react';
 import { useNavigate } from 'react-router-dom';
-import {
-  Clock,
-  CheckCircle2,
-  XCircle,
-  Layers,
-  Search,
-  RotateCw,
-  Copy,
-  Check,
-  ExternalLink,
-  ChevronLeft,
-  ChevronRight,
-  ShieldCheck,
-  ShieldAlert,
-  Inbox,
-  FilterX,
-} from 'lucide-react';
-import { Card, CardContent } from '@/components/ui/card';
+import { Loader2 } from 'lucide-react';
+import { Card } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Badge } from '@/components/ui/badge';
@@ -39,14 +23,21 @@ import {
 import { useRequests } from '@/hooks/useRequests';
 import { useToast } from '@/hooks/useToast';
 import type { BankRequest, RequestStatus } from '@/types';
-import {
-  getSubTypeInfo,
-  REQUEST_TYPE_LABELS,
-  STATUS_LABELS,
-  STATUS_VARIANTS,
-} from '@/lib/constants';
+import { getSubTypeInfo, REQUEST_TYPE_LABELS, STATUS_LABELS } from '@/lib/constants';
+import { cn } from '@/lib/utils';
 
 const ITEMS_PER_PAGE = 10;
+
+function getStatusBadgeMeta(status: RequestStatus): {
+  variant: 'success' | 'destructive' | 'warning' | 'info';
+  icon: string;
+} {
+  if (status === 'approved') return { variant: 'success', icon: '✓' };
+  if (status === 'rejected') return { variant: 'destructive', icon: '✕' };
+  if (status === 'pending_upload' || status === 'pending_correction')
+    return { variant: 'warning', icon: '!' };
+  return { variant: 'info', icon: '◔' };
+}
 
 export const EmployeeDashboardPage: React.FC = () => {
   const navigate = useNavigate();
@@ -54,37 +45,26 @@ export const EmployeeDashboardPage: React.FC = () => {
   const { toast } = useToast();
 
   const [allRequests, setAllRequests] = useState<BankRequest[]>([]);
-  const [copiedId, setCopiedId] = useState<string | null>(null);
-
-  // Filters
   const [statusFilter, setStatusFilter] = useState<string>('all');
   const [subTypeFilter, setSubTypeFilter] = useState<string>('all');
+  const [autoFlagOnly, setAutoFlagOnly] = useState<boolean>(false);
   const [searchQuery, setSearchQuery] = useState<string>('');
-  const [startDate, setStartDate] = useState<string>('');
-  const [endDate, setEndDate] = useState<string>('');
   const [currentPage, setCurrentPage] = useState<number>(1);
 
-  // Fetch all requests for metrics & local filtering/pagination
   const fetchRequests = useCallback(async () => {
     try {
       const data = await getEmployeeRequests({ status: 'all', limit: 100 });
       setAllRequests(data || []);
     } catch (err: unknown) {
       const msg = err instanceof Error ? err.message : 'فشل في تحميل الطلبات';
-      toast({
-        variant: 'destructive',
-        title: 'خطأ في جلب البيانات',
-        description: msg,
-      });
+      toast({ variant: 'destructive', title: 'خطأ في جلب البيانات', description: msg });
     }
   }, [getEmployeeRequests, toast]);
 
   useEffect(() => {
     let ignore = false;
     const run = async () => {
-      if (!ignore) {
-        await fetchRequests();
-      }
+      if (!ignore) await fetchRequests();
     };
     void run();
     return () => {
@@ -92,131 +72,42 @@ export const EmployeeDashboardPage: React.FC = () => {
     };
   }, [fetchRequests]);
 
-  // Compute Metrics from all retrieved requests
   const metrics = useMemo(() => {
-    let pendingCount = 0;
-    let approvedCount = 0;
-    let rejectedCount = 0;
+    let pending = 0;
+    let approved = 0;
+    let rejected = 0;
+    let autoFlagged = 0;
 
     for (const req of allRequests) {
-      if (req.status === 'pending_review') {
-        pendingCount++;
-      } else if (req.status === 'approved') {
-        approvedCount++;
-      } else if (req.status === 'rejected') {
-        rejectedCount++;
-      }
+      if (req.status === 'pending_review') pending++;
+      else if (req.status === 'approved') approved++;
+      else if (req.status === 'rejected') rejected++;
+      if (req.auto_decision === 'auto_rejected') autoFlagged++;
     }
 
-    return {
-      pending: pendingCount,
-      approved: approvedCount,
-      rejected: rejectedCount,
-      total: allRequests.length,
-    };
+    return { pending, approved, rejected, autoFlagged };
   }, [allRequests]);
 
-  // Filtered requests list
   const filteredRequests = useMemo(() => {
     return allRequests.filter((req) => {
-      // Status filter
-      if (statusFilter !== 'all' && req.status !== statusFilter) {
-        return false;
-      }
+      if (statusFilter !== 'all' && req.status !== statusFilter) return false;
+      if (subTypeFilter !== 'all' && req.sub_type !== subTypeFilter) return false;
+      if (autoFlagOnly && req.auto_decision !== 'auto_rejected') return false;
 
-      // Sub-type filter
-      if (subTypeFilter !== 'all' && req.sub_type !== subTypeFilter) {
-        return false;
-      }
-
-      // Date range filter
-      if (startDate) {
-        const reqDate = new Date(req.created_at);
-        const start = new Date(startDate);
-        if (reqDate < start) return false;
-      }
-
-      if (endDate) {
-        const reqDate = new Date(req.created_at);
-        const end = new Date(endDate + 'T23:59:59');
-        if (reqDate > end) return false;
-      }
-
-      // Search query (matches name, email, short ID or full ID)
       if (searchQuery.trim()) {
-        const query = searchQuery.trim().toLowerCase();
+        const q = searchQuery.trim().toLowerCase();
         const shortId = req.id ? req.id.slice(0, 8).toLowerCase() : '';
         const fullId = req.id ? req.id.toLowerCase() : '';
         const name = (req.customer_name || req.customer?.name || '').toLowerCase();
         const email = (req.customer_email || req.customer?.email || '').toLowerCase();
-
-        const matches =
-          shortId.includes(query) ||
-          fullId.includes(query) ||
-          name.includes(query) ||
-          email.includes(query);
-
-        if (!matches) return false;
+        if (!shortId.includes(q) && !fullId.includes(q) && !name.includes(q) && !email.includes(q)) {
+          return false;
+        }
       }
-
       return true;
     });
-  }, [allRequests, statusFilter, subTypeFilter, startDate, endDate, searchQuery]);
+  }, [allRequests, statusFilter, subTypeFilter, autoFlagOnly, searchQuery]);
 
-  const handleStatusFilterChange = (val: string) => {
-    setStatusFilter(val);
-    setCurrentPage(1);
-  };
-
-  const handleSubTypeFilterChange = (val: string) => {
-    setSubTypeFilter(val);
-    setCurrentPage(1);
-  };
-
-  const handleSearchChange = (e: React.ChangeEvent<HTMLInputElement>) => {
-    setSearchQuery(e.target.value);
-    setCurrentPage(1);
-  };
-
-  const handleStartDateChange = (e: React.ChangeEvent<HTMLInputElement>) => {
-    setStartDate(e.target.value);
-    setCurrentPage(1);
-  };
-
-  const handleEndDateChange = (e: React.ChangeEvent<HTMLInputElement>) => {
-    setEndDate(e.target.value);
-    setCurrentPage(1);
-  };
-
-  const handleCardClick = (status: string) => {
-    setStatusFilter((prev) => (prev === status ? 'all' : status));
-    setCurrentPage(1);
-  };
-
-  const handleClearFilters = () => {
-    setStatusFilter('all');
-    setSubTypeFilter('all');
-    setSearchQuery('');
-    setStartDate('');
-    setEndDate('');
-    setCurrentPage(1);
-  };
-
-  const handleCopyId = (e: React.MouseEvent, id: string) => {
-    e.stopPropagation();
-    navigator.clipboard.writeText(id);
-    setCopiedId(id);
-    toast({
-      variant: 'default',
-      title: 'تم النسخ',
-      description: `تم نسخ معرف الطلب #${id.slice(0, 8).toUpperCase()}`,
-    });
-    setTimeout(() => {
-      setCopiedId(null);
-    }, 2000);
-  };
-
-  // Pagination calculation
   const totalItems = filteredRequests.length;
   const totalPages = Math.max(1, Math.ceil(totalItems / ITEMS_PER_PAGE));
   const paginatedRequests = useMemo(() => {
@@ -225,290 +116,185 @@ export const EmployeeDashboardPage: React.FC = () => {
   }, [filteredRequests, currentPage]);
 
   const hasActiveFilters =
-    statusFilter !== 'all' ||
-    subTypeFilter !== 'all' ||
-    searchQuery.trim() !== '' ||
-    startDate !== '' ||
-    endDate !== '';
+    statusFilter !== 'all' || subTypeFilter !== 'all' || autoFlagOnly || searchQuery.trim() !== '';
+
+  const handleKpiClick = (target: 'pending_review' | 'approved' | 'rejected' | 'auto_flagged') => {
+    setCurrentPage(1);
+    if (target === 'auto_flagged') {
+      setAutoFlagOnly((prev) => !prev);
+      setStatusFilter('all');
+      return;
+    }
+    setAutoFlagOnly(false);
+    setStatusFilter((prev) => (prev === target ? 'all' : target));
+  };
+
+  const handleClearFilters = () => {
+    setStatusFilter('all');
+    setSubTypeFilter('all');
+    setAutoFlagOnly(false);
+    setSearchQuery('');
+    setCurrentPage(1);
+  };
 
   return (
-    <div className="space-y-6" dir="rtl">
+    <div className="space-y-5">
       {/* Header */}
-      <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
-        <div>
-          <h1 className="text-2xl font-bold text-slate-900 flex items-center gap-2">
-            <ShieldCheck className="h-7 w-7 text-emerald-600" />
-            لوحة تحكم موظف المراجعة والتدقيق
-          </h1>
-          <p className="text-sm text-slate-500 mt-1">
-            مراجعة طلبات فتح الحسابات البنكية، فحص المستندات والتحقق من القواعد المصرفية
-          </p>
-        </div>
-
-        <Button
-          variant="outline"
-          onClick={fetchRequests}
-          disabled={isLoading}
-          className="gap-2 self-start sm:self-auto border-slate-300 hover:bg-slate-50"
-        >
-          <RotateCw className={`h-4 w-4 ${isLoading ? 'animate-spin text-emerald-600' : 'text-slate-500'}`} />
-          <span>تحديث البيانات</span>
+      <div className="flex items-center justify-between gap-3 flex-wrap">
+        <h1 className="text-[28px] font-bold m-0">لوحة الموظف</h1>
+        <Button type="button" variant="outline" size="sm" onClick={fetchRequests} disabled={isLoading}>
+          تحديث
         </Button>
       </div>
 
-      {/* Metrics Summary Cards */}
-      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
-        {/* Pending Review */}
+      {/* KPI Cards */}
+      <div className="grid grid-cols-2 lg:grid-cols-4 gap-3.5">
         <Card
-          onClick={() => handleCardClick('pending_review')}
-          className={`cursor-pointer transition hover:shadow-md border ${
-            statusFilter === 'pending_review'
-              ? 'ring-2 ring-amber-500 border-amber-300 bg-amber-50/20'
-              : 'border-slate-200 bg-white hover:border-amber-200'
-          }`}
+          onClick={() => handleKpiClick('pending_review')}
+          className={cn(
+            'p-5 cursor-pointer transition-colors',
+            statusFilter === 'pending_review' && 'border-2 border-[var(--teal)] bg-[var(--in-bg)]/40'
+          )}
         >
-          <CardContent className="p-5 flex items-center justify-between">
-            <div>
-              <p className="text-xs font-semibold text-amber-700 uppercase tracking-wide">
-                طلبات بانتظار التدقيق
-              </p>
-              <h3 className="text-3xl font-extrabold text-slate-900 mt-1 font-mono">
-                {metrics.pending}
-              </h3>
-              <p className="text-[11px] text-slate-400 mt-1">تتطلب فحص وقرار الموظف</p>
-            </div>
-            <div className="h-12 w-12 rounded-xl bg-amber-100/70 text-amber-600 flex items-center justify-center shrink-0">
-              <Clock className="h-6 w-6" />
-            </div>
-          </CardContent>
+          <div className="text-[14px] text-[var(--mut)]">قيد المراجعة</div>
+          <div className="text-[34px] font-bold mt-1">
+            <span className="ltr">{metrics.pending}</span>
+          </div>
         </Card>
 
-        {/* Approved */}
         <Card
-          onClick={() => handleCardClick('approved')}
-          className={`cursor-pointer transition hover:shadow-md border ${
-            statusFilter === 'approved'
-              ? 'ring-2 ring-emerald-500 border-emerald-300 bg-emerald-50/20'
-              : 'border-slate-200 bg-white hover:border-emerald-200'
-          }`}
+          onClick={() => handleKpiClick('approved')}
+          className={cn(
+            'p-5 cursor-pointer transition-colors',
+            statusFilter === 'approved' && 'border-2 border-[var(--ok)] bg-[var(--ok-bg)]/40'
+          )}
         >
-          <CardContent className="p-5 flex items-center justify-between">
-            <div>
-              <p className="text-xs font-semibold text-emerald-700 uppercase tracking-wide">
-                طلبات معتمدة
-              </p>
-              <h3 className="text-3xl font-extrabold text-slate-900 mt-1 font-mono">
-                {metrics.approved}
-              </h3>
-              <p className="text-[11px] text-slate-400 mt-1">تمت الموافقة وتفعيل الحساب</p>
-            </div>
-            <div className="h-12 w-12 rounded-xl bg-emerald-100/70 text-emerald-600 flex items-center justify-center shrink-0">
-              <CheckCircle2 className="h-6 w-6" />
-            </div>
-          </CardContent>
+          <div className="text-[14px] text-[var(--mut)]">تمت الموافقة</div>
+          <div className="text-[34px] font-bold mt-1">
+            <span className="ltr">{metrics.approved}</span>
+          </div>
         </Card>
 
-        {/* Rejected */}
         <Card
-          onClick={() => handleCardClick('rejected')}
-          className={`cursor-pointer transition hover:shadow-md border ${
-            statusFilter === 'rejected'
-              ? 'ring-2 ring-rose-500 border-rose-300 bg-rose-50/20'
-              : 'border-slate-200 bg-white hover:border-rose-200'
-          }`}
+          onClick={() => handleKpiClick('rejected')}
+          className={cn(
+            'p-5 cursor-pointer transition-colors',
+            statusFilter === 'rejected' && 'border-2 border-[var(--bad)] bg-[var(--bad-bg)]/40'
+          )}
         >
-          <CardContent className="p-5 flex items-center justify-between">
-            <div>
-              <p className="text-xs font-semibold text-rose-700 uppercase tracking-wide">
-                طلبات مرفوضة
-              </p>
-              <h3 className="text-3xl font-extrabold text-slate-900 mt-1 font-mono">
-                {metrics.rejected}
-              </h3>
-              <p className="text-[11px] text-slate-400 mt-1">تم رفضها مع ذكر الأسباب</p>
-            </div>
-            <div className="h-12 w-12 rounded-xl bg-rose-100/70 text-rose-600 flex items-center justify-center shrink-0">
-              <XCircle className="h-6 w-6" />
-            </div>
-          </CardContent>
+          <div className="text-[14px] text-[var(--mut)]">مرفوضة</div>
+          <div className="text-[34px] font-bold mt-1">
+            <span className="ltr">{metrics.rejected}</span>
+          </div>
         </Card>
 
-        {/* Total */}
         <Card
-          onClick={() => handleCardClick('all')}
-          className={`cursor-pointer transition hover:shadow-md border ${
-            statusFilter === 'all'
-              ? 'ring-2 ring-indigo-500 border-indigo-300 bg-indigo-50/20'
-              : 'border-slate-200 bg-white hover:border-indigo-200'
-          }`}
+          onClick={() => handleKpiClick('auto_flagged')}
+          className={cn(
+            'p-5 cursor-pointer transition-colors',
+            autoFlagOnly && 'border-2 border-[var(--warn)] bg-[var(--warn-bg)]/50'
+          )}
         >
-          <CardContent className="p-5 flex items-center justify-between">
-            <div>
-              <p className="text-xs font-semibold text-indigo-700 uppercase tracking-wide">
-                إجمالي الطلبات
-              </p>
-              <h3 className="text-3xl font-extrabold text-slate-900 mt-1 font-mono">
-                {metrics.total}
-              </h3>
-              <p className="text-[11px] text-slate-400 mt-1">كافة الحسابات المسجلة</p>
-            </div>
-            <div className="h-12 w-12 rounded-xl bg-indigo-100/70 text-indigo-600 flex items-center justify-center shrink-0">
-              <Layers className="h-6 w-6" />
-            </div>
-          </CardContent>
+          <div className="text-[14px] text-[var(--mut)]">مُعلَّمة آلياً</div>
+          <div className="text-[34px] font-bold mt-1">
+            <span className="ltr">{metrics.autoFlagged}</span>
+          </div>
         </Card>
       </div>
 
-      {/* Filter and Search Bar */}
-      <Card className="border-slate-200 bg-white shadow-xs">
-        <CardContent className="p-4 space-y-3">
-          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-12 gap-3 items-end">
-            {/* Search Input */}
-            <div className="lg:col-span-4 relative">
-              <label className="text-[11px] font-semibold text-slate-600 block mb-1">
-                بحث بالاسم أو المعرف
-              </label>
-              <div className="relative">
-                <Search className="absolute right-3 top-2.5 h-4 w-4 text-slate-400 pointer-events-none" />
-                <Input
-                  placeholder="بحث باسم العميل، البريد، أو رقم الطلب..."
-                  value={searchQuery}
-                  onChange={handleSearchChange}
-                  className="pr-9 text-sm"
-                />
-              </div>
-            </div>
-
-            {/* Status Select */}
-            <div className="lg:col-span-2">
-              <label className="text-[11px] font-semibold text-slate-600 block mb-1">
-                حالة الطلب
-              </label>
-              <Select value={statusFilter} onValueChange={handleStatusFilterChange}>
-                <SelectTrigger>
-                  <SelectValue placeholder="حالة الطلب" />
-                </SelectTrigger>
-                <SelectContent>
-                  <SelectItem value="all">الكل (جميع الحالات)</SelectItem>
-                  <SelectItem value="pending_review">قيد المراجعة والتدقيق</SelectItem>
-                  <SelectItem value="pending_correction">قيد تصحيح العميل</SelectItem>
-                  <SelectItem value="approved">معتمد ومقبول</SelectItem>
-                  <SelectItem value="rejected">مرفوض</SelectItem>
-                </SelectContent>
-              </Select>
-            </div>
-
-            {/* Sub-type Select */}
-            <div className="lg:col-span-2">
-              <label className="text-[11px] font-semibold text-slate-600 block mb-1">
-                فئة الطلب
-              </label>
-              <Select value={subTypeFilter} onValueChange={handleSubTypeFilterChange}>
-                <SelectTrigger>
-                  <SelectValue placeholder="فئة الطلب" />
-                </SelectTrigger>
-                <SelectContent>
-                  <SelectItem value="all">الكل (جميع الأنواع)</SelectItem>
-                  <SelectItem value="individual">حساب أفراد (21+ سنة)</SelectItem>
-                  <SelectItem value="youth">حساب شباب (15-21 سنة)</SelectItem>
-                  <SelectItem value="minor">حساب قصّر (تحت 15 سنة)</SelectItem>
-                  <SelectItem value="prepaid">بطاقة مسبوقة الدفع</SelectItem>
-                  <SelectItem value="debit">بطاقة الخصم المباشر</SelectItem>
-                  <SelectItem value="credit">بطاقة ائتمانية</SelectItem>
-                </SelectContent>
-              </Select>
-            </div>
-
-            {/* Start Date */}
-            <div className="lg:col-span-2">
-              <label className="text-[11px] font-semibold text-slate-600 block mb-1">
-                من تاريخ
-              </label>
-              <Input
-                type="date"
-                value={startDate}
-                onChange={handleStartDateChange}
-                className="text-xs h-10"
-                aria-label="من تاريخ"
-              />
-            </div>
-
-            {/* End Date */}
-            <div className="lg:col-span-2">
-              <div className="flex items-center justify-between mb-1">
-                <label className="text-[11px] font-semibold text-slate-600 block">
-                  إلى تاريخ
-                </label>
-                {hasActiveFilters && (
-                  <button
-                    type="button"
-                    onClick={handleClearFilters}
-                    className="text-[10px] text-rose-600 hover:text-rose-700 hover:underline flex items-center gap-0.5"
-                  >
-                    <FilterX className="h-3 w-3" />
-                    <span>مسح</span>
-                  </button>
-                )}
-              </div>
-              <Input
-                type="date"
-                value={endDate}
-                onChange={handleEndDateChange}
-                className="text-xs h-10"
-                aria-label="إلى تاريخ"
-              />
-            </div>
+      {/* Compact Filters */}
+      <Card className="p-4">
+        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-12 gap-3 items-center">
+          <div className="lg:col-span-5">
+            <Input
+              placeholder="بحث باسم العميل، البريد الإلكتروني، أو رقم الطلب..."
+              value={searchQuery}
+              onChange={(e) => {
+                setSearchQuery(e.target.value);
+                setCurrentPage(1);
+              }}
+            />
           </div>
-        </CardContent>
+
+          <div className="lg:col-span-3">
+            <Select
+              value={statusFilter}
+              onValueChange={(val) => {
+                setStatusFilter(val);
+                setCurrentPage(1);
+              }}
+            >
+              <SelectTrigger>
+                <SelectValue placeholder="الحالة" />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value="all">كل الحالات</SelectItem>
+                <SelectItem value="pending_review">قيد مراجعة الموظف</SelectItem>
+                <SelectItem value="pending_correction">مطلوب مراجعة البيانات</SelectItem>
+                <SelectItem value="approved">تمت الموافقة</SelectItem>
+                <SelectItem value="rejected">مرفوضة</SelectItem>
+              </SelectContent>
+            </Select>
+          </div>
+
+          <div className="lg:col-span-3">
+            <Select
+              value={subTypeFilter}
+              onValueChange={(val) => {
+                setSubTypeFilter(val);
+                setCurrentPage(1);
+              }}
+            >
+              <SelectTrigger>
+                <SelectValue placeholder="الفئة" />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value="all">كل الفئات</SelectItem>
+                <SelectItem value="individual">حساب أفراد</SelectItem>
+                <SelectItem value="youth">حساب شباب</SelectItem>
+                <SelectItem value="minor">حساب قصّر</SelectItem>
+                <SelectItem value="prepaid">بطاقة مسبوقة الدفع</SelectItem>
+                <SelectItem value="debit">بطاقة خصم مباشر</SelectItem>
+                <SelectItem value="credit">بطاقة ائتمانية</SelectItem>
+              </SelectContent>
+            </Select>
+          </div>
+
+          <div className="lg:col-span-1 flex justify-end">
+            {hasActiveFilters && (
+              <Button type="button" variant="ghost" size="sm" onClick={handleClearFilters}>
+                مسح
+              </Button>
+            )}
+          </div>
+        </div>
       </Card>
 
       {/* Requests Table */}
-      <Card className="border-slate-200 bg-white shadow-xs overflow-hidden">
-        <Table>
+      <Card className="p-2">
+        <Table className="min-w-[720px]">
           <TableHeader>
-            <TableRow>
-              <TableHead className="w-[120px]">معرف الطلب</TableHead>
-              <TableHead>اسم العميل</TableHead>
-              <TableHead>البريد الإلكتروني</TableHead>
-              <TableHead className="w-[120px]">نوع الطلب</TableHead>
-              <TableHead className="w-[110px]">نوع الحساب</TableHead>
-              <TableHead className="w-[150px]">القرار الآلي</TableHead>
-              <TableHead className="w-[130px]">حالة الطلب</TableHead>
-              <TableHead className="w-[150px]">تاريخ التقديم</TableHead>
-              <TableHead className="w-[130px]">الموظف المراجع</TableHead>
-              <TableHead className="w-[110px] text-center">إجراءات</TableHead>
+            <TableRow className="hover:bg-transparent">
+              <TableHead>رقم الطلب</TableHead>
+              <TableHead>العميل</TableHead>
+              <TableHead>النوع</TableHead>
+              <TableHead>الحالة</TableHead>
+              <TableHead>الفحص الآلي</TableHead>
+              <TableHead></TableHead>
             </TableRow>
           </TableHeader>
           <TableBody>
             {isLoading && paginatedRequests.length === 0 ? (
-              <TableRow>
-                <TableCell colSpan={10} className="text-center py-12 text-slate-500">
-                  <RotateCw className="h-6 w-6 animate-spin mx-auto text-emerald-600 mb-2" />
-                  <p className="text-sm">جاري تحميل بيانات الطلبات...</p>
+              <TableRow className="hover:bg-transparent">
+                <TableCell colSpan={6} className="text-center py-12 text-[var(--mut)]">
+                  <Loader2 className="h-6 w-6 animate-spin text-[var(--teal)] mx-auto mb-2" />
+                  جاري تحميل الطلبات...
                 </TableCell>
               </TableRow>
             ) : paginatedRequests.length === 0 ? (
-              <TableRow>
-                <TableCell colSpan={10} className="text-center py-12">
-                  <div className="flex flex-col items-center justify-center text-slate-400">
-                    <Inbox className="h-12 w-12 stroke-1 text-slate-300 mb-3" />
-                    <p className="text-base font-semibold text-slate-700">لا توجد طلبات تطابق معايير البحث</p>
-                    <p className="text-xs text-slate-400 mt-1">
-                      {hasActiveFilters
-                        ? 'جرّب تغيير خيارات التصفية أو مسح البحث'
-                        : 'لم يتم تقديم أية طلبات حتى الآن'}
-                    </p>
-                    {hasActiveFilters && (
-                      <Button
-                        variant="outline"
-                        size="sm"
-                        onClick={handleClearFilters}
-                        className="mt-4 text-xs"
-                      >
-                        إعادة ضبط الفلاتر
-                      </Button>
-                    )}
-                  </div>
+              <TableRow className="hover:bg-transparent">
+                <TableCell colSpan={6} className="text-center py-12 text-[var(--mut)]">
+                  لا توجد طلبات مطابقة.
                 </TableCell>
               </TableRow>
             ) : (
@@ -516,121 +302,51 @@ export const EmployeeDashboardPage: React.FC = () => {
                 const shortId = req.id ? req.id.slice(0, 8).toUpperCase() : '';
                 const customerName = req.customer_name || req.customer?.name || 'غير محدد';
                 const customerEmail = req.customer_email || req.customer?.email || '-';
-
+                const reqTypeLabel = REQUEST_TYPE_LABELS[req.request_type] || 'فتح حساب بنكي';
                 const subTypeInfo = getSubTypeInfo(req.sub_type);
-
                 const statusLabel = STATUS_LABELS[req.status as RequestStatus] || req.status;
-                const statusVariant = STATUS_VARIANTS[req.status as RequestStatus] || 'default';
-
-                const formattedDate = new Date(req.created_at).toLocaleDateString('ar-EG', {
-                  year: 'numeric',
-                  month: 'short',
-                  day: 'numeric',
-                });
-
-                const verifierName = req.verifier_name || req.verifier?.name || 'لم يُدقق بعد';
+                const badgeMeta = getStatusBadgeMeta(req.status as RequestStatus);
 
                 return (
                   <TableRow
                     key={req.id}
                     onClick={() => navigate(`/employee/requests/${req.id}`)}
-                    className="cursor-pointer transition-colors hover:bg-slate-50/80 group"
+                    className="cursor-pointer"
                   >
-                    {/* Request ID */}
-                    <TableCell className="font-mono font-medium text-slate-900 text-xs">
-                      <div className="flex items-center gap-1.5">
-                        <span className="font-bold text-slate-800">#{shortId}</span>
-                        <button
-                          type="button"
-                          onClick={(e) => handleCopyId(e, req.id)}
-                          title="نسخ المعرف الكامل"
-                          className="opacity-0 group-hover:opacity-100 transition-opacity p-1 hover:bg-slate-200 rounded text-slate-500"
-                        >
-                          {copiedId === req.id ? (
-                            <Check className="h-3 w-3 text-emerald-600" />
-                          ) : (
-                            <Copy className="h-3 w-3" />
-                          )}
-                        </button>
-                      </div>
-                    </TableCell>
-
-                    {/* Customer Name */}
-                    <TableCell className="font-semibold text-slate-800">
-                      {customerName}
-                    </TableCell>
-
-                    {/* Customer Email */}
-                    <TableCell className="text-slate-500 text-xs dir-ltr text-right">
-                      {customerEmail}
-                    </TableCell>
-
-                    {/* Request Type */}
                     <TableCell>
-                      <Badge variant="outline" className="text-xs bg-emerald-50/60 text-emerald-800 border-emerald-200">
-                        {REQUEST_TYPE_LABELS[req.request_type] || 'فتح حساب بنكي'}
+                      <span className="ltr font-semibold">#{shortId}</span>
+                    </TableCell>
+                    <TableCell>
+                      <b>{customerName}</b>
+                      <br />
+                      <span className="ltr text-[12px] text-[var(--mut)]">{customerEmail}</span>
+                    </TableCell>
+                    <TableCell>
+                      {reqTypeLabel} — {subTypeInfo.badge}
+                    </TableCell>
+                    <TableCell>
+                      <Badge variant={badgeMeta.variant}>
+                        <span>{badgeMeta.icon}</span>
+                        <span>{statusLabel}</span>
                       </Badge>
                     </TableCell>
-
-                    {/* Account Type */}
-                    <TableCell>
-                      <Badge variant="outline" className="text-xs bg-slate-50 font-normal border-slate-300">
-                        {subTypeInfo.badge}
-                      </Badge>
-                    </TableCell>
-
-                    {/* Auto-Decision */}
                     <TableCell>
                       {req.auto_decision === 'auto_approved' ? (
-                        <Badge variant="success" className="gap-1 text-[11px] font-medium py-0.5">
-                          <ShieldCheck className="h-3 w-3" />
-                          فحص آلي مطابق
-                        </Badge>
+                        <Badge variant="success">✓ مقبول مبدئياً</Badge>
                       ) : req.auto_decision === 'auto_rejected' ? (
-                        <Badge variant="destructive" className="gap-1 text-[11px] font-medium py-0.5">
-                          <ShieldAlert className="h-3 w-3" />
-                          فحص آلي مرفوض
-                        </Badge>
+                        <Badge variant="destructive">✕ مرفوض مبدئياً</Badge>
                       ) : (
-                        <Badge variant="secondary" className="text-[11px] font-medium text-slate-600 bg-slate-100">
-                          قيد التقييم
-                        </Badge>
+                        <Badge variant="secondary">◔ قيد التقييم</Badge>
                       )}
                     </TableCell>
-
-                    {/* Status */}
-                    <TableCell>
-                      <Badge variant={statusVariant} className="text-xs font-medium py-0.5 px-2">
-                        {statusLabel}
-                      </Badge>
-                    </TableCell>
-
-                    {/* Created Date */}
-                    <TableCell className="text-xs text-slate-500">
-                      {formattedDate}
-                    </TableCell>
-
-                    {/* Verifier */}
-                    <TableCell className="text-xs text-slate-600">
-                      {req.verified_by ? (
-                        <span className="font-medium text-emerald-800 bg-emerald-50 px-2 py-0.5 rounded">
-                          {verifierName}
-                        </span>
-                      ) : (
-                        <span className="text-slate-400 italic">لم يُدقق بعد</span>
-                      )}
-                    </TableCell>
-
-                    {/* Action */}
-                    <TableCell className="text-center" onClick={(e) => e.stopPropagation()}>
+                    <TableCell onClick={(e) => e.stopPropagation()}>
                       <Button
+                        type="button"
+                        variant="outline"
                         size="sm"
-                        variant="ghost"
                         onClick={() => navigate(`/employee/requests/${req.id}`)}
-                        className="h-8 px-2.5 text-xs text-emerald-700 hover:text-emerald-800 hover:bg-emerald-50 gap-1 font-semibold"
                       >
-                        <span>مراجعة</span>
-                        <ExternalLink className="h-3.5 w-3.5" />
+                        فتح
                       </Button>
                     </TableCell>
                   </TableRow>
@@ -640,46 +356,31 @@ export const EmployeeDashboardPage: React.FC = () => {
           </TableBody>
         </Table>
 
-        {/* Pagination Footer */}
-        {totalItems > 0 && (
-          <div className="flex flex-col sm:flex-row items-center justify-between gap-3 p-4 border-t border-slate-100 bg-slate-50/50 text-xs text-slate-600">
-            <div>
-              عرض{' '}
-              <span className="font-bold text-slate-800">
-                {(currentPage - 1) * ITEMS_PER_PAGE + 1}
-              </span>{' '}
-              إلى{' '}
-              <span className="font-bold text-slate-800">
-                {Math.min(currentPage * ITEMS_PER_PAGE, totalItems)}
-              </span>{' '}
-              من إجمالي <span className="font-bold text-slate-800">{totalItems}</span> طلب
-            </div>
-
-            <div className="flex items-center gap-1.5">
+        {/* Pagination */}
+        {totalPages > 1 && (
+          <div className="flex items-center justify-between gap-3 px-3 py-3 border-t border-[var(--line)] text-[13px] text-[var(--mut)] flex-wrap">
+            <span>
+              صفحة <b className="ltr">{currentPage}</b> من <b className="ltr">{totalPages}</b> (
+              <span className="ltr">{totalItems}</span> طلب)
+            </span>
+            <div className="flex items-center gap-2">
               <Button
+                type="button"
                 variant="outline"
                 size="sm"
                 onClick={() => setCurrentPage((p) => Math.max(1, p - 1))}
                 disabled={currentPage === 1}
-                className="h-8 px-2.5 text-xs gap-1"
               >
-                <ChevronRight className="h-3.5 w-3.5" />
-                <span>السابق</span>
+                السابق
               </Button>
-
-              <span className="px-3 py-1 text-xs font-semibold text-slate-700 bg-white border border-slate-200 rounded-md">
-                صفحة {currentPage} من {totalPages}
-              </span>
-
               <Button
+                type="button"
                 variant="outline"
                 size="sm"
                 onClick={() => setCurrentPage((p) => Math.min(totalPages, p + 1))}
                 disabled={currentPage === totalPages}
-                className="h-8 px-2.5 text-xs gap-1"
               >
-                <span>التالي</span>
-                <ChevronLeft className="h-3.5 w-3.5" />
+                التالي
               </Button>
             </div>
           </div>
