@@ -10,7 +10,7 @@ from app.models.user import User
 from app.schemas.document import DocumentResponse
 from app.schemas.request import ProcessResponse
 from app.services.ocr.extractor import process_request_documents
-from app.services.request_types.account_opening import OCR_DOCUMENTS, get_required_documents
+from app.services.request_types import get_handler
 from app.utils.file_storage import save_upload
 
 router = APIRouter()
@@ -53,19 +53,20 @@ def upload_document(
             detail=f"Invalid document type: '{document_type}'",
         )
 
-    # 3. Validate document type is in required list for this account type
-    required_docs = get_required_documents(req.sub_type)
+    # 3. Validate document type is in required list for this request type & sub_type
+    handler = get_handler(req.request_type)
+    required_docs = handler.get_required_documents(req.sub_type)
     if doc_type_enum not in required_docs:
         raise HTTPException(
             status_code=status.HTTP_400_BAD_REQUEST,
-            detail=f"Document type '{doc_type_enum.value}' is not required for account type '{req.sub_type}'",
+            detail=f"Document type '{doc_type_enum.value}' is not required for request sub_type '{req.sub_type}'",
         )
 
     # 4. Save and validate image file
     file_path = save_upload(file=file, request_id=req.id, document_type=doc_type_enum)
 
     # 5. Check if OCR is required
-    ocr_required = doc_type_enum in OCR_DOCUMENTS
+    ocr_required = handler.requires_ocr(doc_type_enum)
 
     # 6. Create Document record
     doc = Document(
@@ -116,7 +117,8 @@ def process_request(
         )
 
     # 3. Verify all required documents for req.sub_type are uploaded
-    required_docs = get_required_documents(req.sub_type)
+    handler = get_handler(req.request_type)
+    required_docs = handler.get_required_documents(req.sub_type)
     uploaded_doc_types = {doc.document_type for doc in req.documents}
     missing_docs = [doc_type for doc_type in required_docs if doc_type not in uploaded_doc_types]
     if missing_docs:

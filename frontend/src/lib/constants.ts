@@ -1,4 +1,58 @@
-import type { AccountType, AutoDecision, DocumentType, RequestStatus } from '@/types';
+import type {
+  AccountType,
+  AutoDecision,
+  DocumentType,
+  RequestStatus,
+  RequestType,
+  RequestTypeConfig,
+} from '@/types';
+
+export const REQUEST_TYPES_CONFIG: Record<RequestType, RequestTypeConfig> = {
+  account_opening: {
+    key: 'account_opening',
+    title: 'فتح حساب جاري / توفير رقمي لدى بنك نايل أوبس',
+    shortTitle: 'فتح حساب بنكي',
+    description: 'اختر نوع الحساب المناسب لك للاطلاع على المستندات والشروط المطلوبة',
+    subTypes: {
+      individual: {
+        key: 'individual',
+        title: 'حساب أفراد',
+        badge: 'أفراد',
+        ageRange: '21 سنة فأكثر',
+        description:
+          'الحساب المصرفي القياسي للأفراد البالغين من سن 21 سنة فأكثر مع إمكانية الوصول لكافة الخدمات والبطاقات المصرفية.',
+        requiredDocs: [
+          'national_id_front',
+          'national_id_back',
+          'proof_of_residence',
+          'proof_of_income',
+        ],
+      },
+      youth: {
+        key: 'youth',
+        title: 'حساب شباب',
+        badge: 'شباب',
+        ageRange: 'من 15 إلى 21 سنة',
+        description:
+          'حساب بنكي مميز مخصص للشباب والطلاب بدون مصاريف فتح حساب ودون اشتراط إثبات دخل.',
+        requiredDocs: ['national_id_front', 'national_id_back'],
+      },
+      minor: {
+        key: 'minor',
+        title: 'حساب قصّر',
+        badge: 'قصّر',
+        ageRange: 'أقل من 15 سنة',
+        description:
+          'حساب توفير مخصص للأطفال والقصر تحت ولاية الأب أو الوصي الشرعي لادخار واستثمار أموالهم بأمان.',
+        requiredDocs: [
+          'birth_certificate',
+          'guardian_national_id_front',
+          'guardian_national_id_back',
+        ],
+      },
+    },
+  },
+};
 
 export const ACCOUNT_TYPES_INFO: Record<
   AccountType,
@@ -10,39 +64,9 @@ export const ACCOUNT_TYPES_INFO: Record<
     requiredDocs: DocumentType[];
   }
 > = {
-  individual: {
-    title: 'حساب أفراد',
-    badge: 'أفراد',
-    ageRange: '21 سنة فأكثر',
-    description: 'الحساب المصرفي القياسي للأفراد البالغين من سن 21 سنة فأكثر مع إمكانية الوصول لكافة الخدمات والبطاقات المصرفية.',
-    requiredDocs: [
-      'national_id_front',
-      'national_id_back',
-      'proof_of_residence',
-      'proof_of_income',
-    ],
-  },
-  youth: {
-    title: 'حساب شباب',
-    badge: 'شباب',
-    ageRange: 'من 15 إلى 21 سنة',
-    description: 'حساب بنكي مميز مخصص للشباب والطلاب بدون مصاريف فتح حساب ودون اشتراط إثبات دخل.',
-    requiredDocs: [
-      'national_id_front',
-      'national_id_back',
-    ],
-  },
-  minor: {
-    title: 'حساب قصّر',
-    badge: 'قصّر',
-    ageRange: 'أقل من 15 سنة',
-    description: 'حساب توفير مخصص للأطفال والقصر تحت ولاية الأب أو الوصي الشرعي لادخار واستثمار أموالهم بأمان.',
-    requiredDocs: [
-      'birth_certificate',
-      'guardian_national_id_front',
-      'guardian_national_id_back',
-    ],
-  },
+  individual: REQUEST_TYPES_CONFIG.account_opening.subTypes.individual,
+  youth: REQUEST_TYPES_CONFIG.account_opening.subTypes.youth,
+  minor: REQUEST_TYPES_CONFIG.account_opening.subTypes.minor,
 };
 
 export const DOCUMENT_TYPE_LABELS: Record<DocumentType, string> = {
@@ -86,9 +110,9 @@ export const STATUS_VARIANTS: Record<
   rejected: 'destructive',
 };
 
-export const REQUEST_TYPE_LABELS: Record<string, string> = {
-  account_opening: 'فتح حساب بنكي',
-};
+export const REQUEST_TYPE_LABELS: Record<string, string> = Object.fromEntries(
+  Object.values(REQUEST_TYPES_CONFIG).map((cfg) => [cfg.key, cfg.shortTitle])
+);
 
 export const AUTO_DECISION_LABELS: Record<AutoDecision, string> = {
   auto_approved: 'مقبول مبدئياً بالفحص الآلي',

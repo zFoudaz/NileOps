@@ -23,13 +23,13 @@ export function useRequests() {
       setError(null);
       try {
         let requestType: RequestType = 'account_opening';
-        let subType: AccountType = 'individual';
+        let subType: string = 'individual';
 
         if (maybeSubType) {
           requestType = (subTypeOrType as RequestType) || 'account_opening';
-          subType = maybeSubType as AccountType;
+          subType = String(maybeSubType);
         } else {
-          subType = subTypeOrType as AccountType;
+          subType = String(subTypeOrType);
         }
 
         const response = await api.post<BankRequest>('/requests', {
